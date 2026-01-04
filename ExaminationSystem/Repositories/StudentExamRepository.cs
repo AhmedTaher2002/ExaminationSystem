@@ -19,7 +19,7 @@ namespace ExaminationSystem.Repositories
         
         public IQueryable<StudentExam> GetAll()
         {
-            var res= _context.StudentExam.Include(se => se.Student).Include(se => se.Exam);
+            var res= _context.StudentExam;
             return res;
         }
 
@@ -36,7 +36,7 @@ namespace ExaminationSystem.Repositories
 
         public IQueryable<StudentExam> Get(Expression<Func<StudentExam, bool>> filter)
         {
-            var res= _context.StudentExam.Include(se => se.Student).Include(se => se.Exam).AsNoTracking()
+            var res= _context.StudentExam.AsNoTracking()
                      .Where(filter);
             return res;
         }
@@ -80,17 +80,14 @@ namespace ExaminationSystem.Repositories
 
 
 
-        //--------------------------------------SRS BUSINESS HELPERS
 
 
-        // Check if student already assigned to exam
         public bool IsStudentAssigned(int studentId, int examId)
         {
             var res= _context.StudentExam.Any(se => se.StudentId == studentId && se.ExamId == examId);
             return res;
         }
 
-        // Check if student already took final exam
         public bool HasFinalExam(int studentId)
         {
             var res= _context.StudentExam.Include(se => se.Exam)
@@ -98,34 +95,29 @@ namespace ExaminationSystem.Repositories
             return res;
         }
 
-        // Get all exams for a student
         public IEnumerable<StudentExam> GetExamsByStudent(int studentId)
         {
             return _context.StudentExam.Include(se => se.Exam).Where(se => se.StudentId == studentId)
                 .AsNoTracking().ToList();
         }
 
-        // Get all students in an exam
         public IEnumerable<StudentExam> GetStudentsByExam(int examId)
         {
             return _context.StudentExam.Include(se => se.Student).Where(se => se.ExamId == examId)
                 .AsNoTracking().ToList();
         }
 
-        // Get all exam results
         public IEnumerable<StudentExam> GetExamResults(int examId)
         {
             return _context.StudentExam.Include(se => se.Student).Where(se => se.ExamId == examId && se.IsSubmitted)
                 .AsNoTracking().ToList();
         }
 
-        // Check submission status
         public bool IsSubmitted(int studentExamId)
         {
             return _context.StudentExam.Any(se => se.ID == studentExamId && se.IsSubmitted);
         }
 
-        // Set score and submission flag
         public void SubmitExam(int studentExamId, int score)
         {
             var studentExam = _context.StudentExam.Find(studentExamId);
@@ -139,7 +131,6 @@ namespace ExaminationSystem.Repositories
             _context.SaveChanges();
         }
 
-        // Get student exam by student & exam
         public StudentExam? GetByStudentAndExam(int studentId, int examId)
         {
             return _context.StudentExam.Include(se => se.Exam).FirstOrDefault(se => se.StudentId == studentId && se.ExamId == examId);

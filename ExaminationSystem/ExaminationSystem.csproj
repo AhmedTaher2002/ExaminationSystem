@@ -20,7 +20,6 @@
   <ItemGroup>
     <Folder Include="DTOs\NewFolder\" />
     <Folder Include="DTOs\StudentExamProfile\" />
-    <Folder Include="Services\NewFolder\" />
   </ItemGroup>
 
 </Project>

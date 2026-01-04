@@ -119,10 +119,8 @@ namespace ExaminationSystem.Services
             await _courseRepository.Add(course);
         }
 
-        public async Task Update(int id, UpdateCourseDTO courseDTO)
+        public async Task Update( UpdateCourseDTO courseDTO)
         {
-            if (!_courseRepository.IsExist(id))
-                throw new Exception("Course Not Found");
 
             if (!_instructorRepository.IsExist(courseDTO.InstructorId))
                 throw new Exception("Instructor Not Found");

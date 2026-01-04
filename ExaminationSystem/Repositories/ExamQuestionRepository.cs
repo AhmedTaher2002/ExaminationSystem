@@ -65,13 +65,13 @@ namespace ExaminationSystem.Repositories
         // Get all questions in an exam
         public IEnumerable<ExamQuestion> GetQuestionsByExam(int examId)
         {
-            return _context.ExamQuestions.Include(eq => eq.Question).Where(eq => eq.ExamId == examId).AsNoTracking().ToList();
+            return _context.ExamQuestions.AsNoTracking().ToList();
         }
 
         // Get exams containing a question (question reuse)
         public IEnumerable<ExamQuestion> GetExamsByQuestion(int questionId)
         {
-            return _context.ExamQuestions.Include(eq => eq.Exam).Where(eq => eq.QuestionId == questionId).AsNoTracking().ToList();
+            return _context.ExamQuestions.AsNoTracking().ToList();
         }
 
         // Remove question from exam

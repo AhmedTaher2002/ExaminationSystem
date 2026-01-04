@@ -3,6 +3,7 @@ using ExaminationSystem.DTOs.Exam;
 using ExaminationSystem.DTOs.Other;
 using ExaminationSystem.DTOs.Student;
 using ExaminationSystem.Models;
+using ExaminationSystem.Models.Enums;
 using ExaminationSystem.Repositories;
 using ExaminationSystem.ViewModels.Student;
 using Microsoft.EntityFrameworkCore;
@@ -150,8 +151,6 @@ namespace ExaminationSystem.Services
 
             return true;
         }
-
-        // Submit answers
         public async Task SubmitAnswers(int studentId, int examId, List<StudentAnswerDTO> answers)
         {
            
@@ -178,9 +177,6 @@ namespace ExaminationSystem.Services
                 Score = (decimal)correctCount / total * 100
             };
         }
-
-
-        // Get Courses for a Student
         public async Task<List<Course>> GetCoursesForStudent(int studentId)
         {
             if (!_studentRepository.IsExist(studentId))
@@ -194,7 +190,6 @@ namespace ExaminationSystem.Services
 
             return courses;
         }
-        // Soft delete the enrollment of a student from a course
         public async Task SoftDeleteStudentFromCourse(StudentCourseDTO studentCourseDTO)
         {
             if (!_studentCourseRepository.IsAssigned(studentCourseDTO.StudentId,studentCourseDTO.CourseId))
@@ -202,7 +197,6 @@ namespace ExaminationSystem.Services
 
             await _studentCourseRepository.SoftDelete(_mapper.Map<StudentCourse>(studentCourseDTO));
         }
-        // Hard delete the enrollment of a student from a course
         public async Task HardDeleteStudentFromCourse(StudentCourseDTO studentCourseDTO)
         {
             if (!_studentCourseRepository.IsAssigned(studentCourseDTO.StudentId,studentCourseDTO.CourseId))
@@ -210,7 +204,6 @@ namespace ExaminationSystem.Services
 
             await _studentCourseRepository.HardDelete(_mapper.Map<StudentCourse>(studentCourseDTO));
         }
-        // Student All Exams For Student 
         public IEnumerable<GetExamsForStudentDTO> GetExamsForStudent(int studentId)
         {
             if (!_studentRepository.IsExist(studentId))
@@ -224,9 +217,6 @@ namespace ExaminationSystem.Services
 
             return _mapper.Map<IEnumerable<GetExamsForStudentDTO>>(res);
         }
-   
 
-
-
+        }
     }
-}

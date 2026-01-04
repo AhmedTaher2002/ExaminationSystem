@@ -19,7 +19,7 @@ public class ExamController : ControllerBase
     [HttpGet]
     public IEnumerable<GetAllExamsViewModel> GetAll()
     {
-        return _service.GetAll()
+        /*var res= _service.GetAll()
             .Select(e => new GetAllExamsViewModel
             {
                 ID = e.ID,
@@ -27,43 +27,48 @@ public class ExamController : ControllerBase
                 Type = e.Type,
                 CourseId = e.CourseId
             });
+        return res;*/
+        return _mapper.Map< IEnumerable<GetAllExamsViewModel>>(_service.GetAll())
     }
 
     [HttpGet]
     public async Task<GetExamByIdViewModel> GetByID(int id)
     {
         var dto = await _service.GetByID(id);
-        return new GetExamByIdViewModel
+        /*return new GetExamByIdViewModel
         {
             ID = dto.ID,
             Title = dto.Title,
             Type = dto.Type,
             CourseId = dto.CourseId
-        };
+        };*/
+        return _mapper.Map<GetExamByIdViewModel>(dto);
     }
 
     [HttpPost]
-    public bool Create(CreateExamViewModel vm)
+    public async Task<bool> Create(CreateExamViewModel vm)
     {
-        _service.Create(new CreateExamDTO
+        /*await _service.Create(new CreateExamDTO
         {
             Title = vm.Title,
             Type = vm.Type,
             CourseId = vm.CourseId,
             NumberOfQuestions = vm.NumberOfQuestions
-        });
+        });*/
+        await _service.Create(_mapper.Map<CreateExamDTO>(vm));
         return true;
     }
 
     [HttpPut]
-    public bool Update(int id, UpdateExamViewModel vm)
+    public async Task<bool> Update(int id, UpdateExamViewModel vm)
     {
-        _service.Update(id, new UpdateExamDTO
+        /*await _service.Update(id, new UpdateExamDTO
         {
             Title = vm.Title,
             Type = vm.Type,
             NumberOfQuestions = vm.NumberOfQuestions
-        });
+        });*/
+        await _service.Update(id,_mapper.Map<UpdateExamDTO>(vm));
         return true;
     }
 

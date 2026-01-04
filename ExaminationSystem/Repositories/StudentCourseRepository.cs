@@ -15,11 +15,11 @@ namespace ExaminationSystem.Repositories
         }
         public IQueryable<StudentCourse> GetAll()
         {
-            var res = _context.StudentCourses.Include(sc => sc.Student).Include(sc => sc.Course);
+            var res = _context.StudentCourses;
             return res;
         }
         public async Task<StudentCourse?> GetbyID(int studentId, int courseId) { 
-            var res = await _context.StudentCourses.Include(sc => sc.Student).Include(sc => sc.Course).AsNoTracking()
+            var res = await _context.StudentCourses.AsNoTracking()
                 .FirstOrDefaultAsync(sc => sc.StudentId == studentId && sc.CourseId == courseId&&sc.IsDeleted);
             return res;
 
@@ -46,8 +46,7 @@ namespace ExaminationSystem.Repositories
         }
         public  IQueryable<StudentCourse> Get(int? studentId, int? courseId)
         {
-            var query = _context.StudentCourses.Include(sc => sc.Student).Include(sc => sc.Course)
-                .AsQueryable();
+            var query = _context.StudentCourses.AsQueryable();
             if (studentId.HasValue)
             {
                 query = query.Where(sc => sc.StudentId == studentId.Value);
@@ -97,22 +96,12 @@ namespace ExaminationSystem.Repositories
         }
         public IEnumerable<StudentCourse> GetCoursesByStudent(int studentId)
         {
-            return _context.StudentCourses.Include(sc => sc.Course).ThenInclude(c => c.Instructor)
-                .Where(sc => sc.StudentId == studentId).AsNoTracking().ToList();
+            return _context.StudentCourses.Where(sc => sc.StudentId == studentId).AsNoTracking().ToList();
         }
 
         public IEnumerable<StudentCourse> GetStudentsByCourse(int courseId)
         {
-            return _context.StudentCourses.Include(sc => sc.Student).Where(sc => sc.CourseId == courseId)
-                .AsNoTracking();
-        }
-
-        public async Task<bool> DeleteStudentFromCourse(StudentCourse studentCourse)
-        {
-            //var sc = _context.StudentCourses.FirstOrDefault(x => x.StudentId == studentCourse.StudentId && x.CourseId == studentCourse.CourseId);
-
-            await SoftDelete(studentCourse);
-            return true;
+            return _context.StudentCourses.AsNoTracking();
         }
 
         internal bool IsAssigned(int studentId,int courseId )

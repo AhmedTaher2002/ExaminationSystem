@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 
 namespace ExaminationSystem.Repositories
 {
-    public class StudentAnswerRepository 
+    public class StudentAnswerRepository
     {
         private readonly Context _context;
 
@@ -16,7 +16,7 @@ namespace ExaminationSystem.Repositories
 
         public IQueryable<StudentAnswer> GetAll()
         {
-            var res = _context.StudentAnswers.Include(sa => sa.SelectedChoice).Include(sa => sa.Question);
+            var res = _context.StudentAnswers;
             return res;
         }
 
@@ -51,50 +51,26 @@ namespace ExaminationSystem.Repositories
         //Get all answers for a specific Student Exam attempt
         public IEnumerable<StudentAnswer> GetAnswersByStudentExam(int studentId,int examId)
         {
-            var res= _context.StudentAnswers.Include(sa => sa.SelectedChoice).Include(sa => sa.Question)
-                .Where(sa => sa.StudentId == studentId && sa.ExamId == examId).AsNoTracking().ToList();
+            var res= _context.StudentAnswers.Where(sa => sa.StudentId == studentId && sa.ExamId == examId).AsNoTracking().ToList();
             return res;
         }
 
         // Count correct answers
         public int CountCorrectAnswers(int studentId,int examId)
         {
-            return _context.StudentAnswers.Include(sa => sa.SelectedChoice)
-                    .Count(sa => sa.StudentId == studentId&&sa.ExamId==examId && sa.SelectedChoice.IsCorrect);
-        }
-
-        // Remove all answers for an exam attempt (safety / reset)
-        public void DeleteByStudentExam(int studentId, int examId)
-        {
-            var answers = _context.StudentAnswers.Where(sa => sa.StudentId == studentId && sa.ExamId == examId);
+            return _context.StudentAnswers.Count(sa => sa.StudentId == studentId&&sa.ExamId==examId && sa.SelectedChoice.IsCorrect);
         }
         public IEnumerable<StudentAnswer> GetAnswersByStudentExam(int studentExamId)
         {
-            var res= _context.StudentAnswers.Include(sa => sa.SelectedChoice).Include(sa => sa.Question)
-                .Where(sa => sa.StudentExam.ID == studentExamId).AsNoTracking().ToList();
+            var res= _context.StudentAnswers.Where(sa => sa.StudentExam.ID == studentExamId).AsNoTracking().ToList();
             return res;
         }
 
-        // Count correct answers
-        public int CountCorrectAnswers(int studentExamId)
-        {
-            return _context.StudentAnswers.Include(sa => sa.SelectedChoice)
-                    .Count(sa => sa.StudentExam.ID == studentExamId &&sa.SelectedChoice.IsCorrect);
-        }
-
-        // Remove all answers for an exam attempt (safety / reset)
         public void DeleteByStudentExam(int studentExamId)
         {
             var answers = _context.StudentAnswers.Where(sa => sa.StudentExam.ID == studentExamId);
             _context.StudentAnswers.RemoveRange(answers);
             _context.SaveChanges();
-        }
-
-        // Check if choice is correct
-        public bool IsCorrectChoice(int choiceId)
-        {
-            return _context.Choices
-                .Any(c => c.ID == choiceId && c.IsCorrect);
         }
 
         internal bool IsAnswered(int studentId, int examId, int questionId)

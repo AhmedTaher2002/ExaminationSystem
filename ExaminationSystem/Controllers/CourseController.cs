@@ -24,12 +24,13 @@ namespace ExaminationSystem.Controllers
 
         
         [HttpGet]
-        public IList<GetAllCoursesViewModel> GetAll() // IQueryable and Serilization 
+        public IEnumerable<GetAllCoursesViewModel> GetAll() // IQueryable and Serilization 
         {
 
-            var crs = _courseService.GetAll();
+            var Courses = _courseService.GetAll();
+            /*
             List<GetAllCoursesViewModel> result = new List<GetAllCoursesViewModel>();
-            foreach (var course in crs)
+            foreach (var course in Courses)
             {
                     var courseViewModel = new GetAllCoursesViewModel
                     {
@@ -47,6 +48,9 @@ namespace ExaminationSystem.Controllers
                 
             }
             return result.ToList();
+            */
+            return _mapper.Map<IEnumerable<GetAllCoursesViewModel>>(Courses);
+
         }
 
 
@@ -98,8 +102,9 @@ namespace ExaminationSystem.Controllers
 
 
         [HttpPost]
-        public bool Create(CreateCourseViewModel course)
+        public async Task Create(CreateCourseViewModel course)
         {
+            /*
             var dto = new CreateCourseDTO
             {
                Name=course.Name,
@@ -107,15 +112,14 @@ namespace ExaminationSystem.Controllers
                Hours=course.Hours,
                InstructorID=course.InstructorID
             };
-
-            _courseService.Create(dto);
-            return true;
+            await _courseService.Create(dto);*/
+            await _courseService.Create(_mapper.Map<CreateCourseDTO>(course));
+           
         }
 
 
-
         [HttpPut]
-        public bool Update(int courseid,UpdateCourseViewModel viewModel)
+        public async Task Update(int courseid,UpdateCourseViewModel viewModel)
         {
             var currentCourse = _courseService.GetByID(courseid).Result;
             viewModel = new UpdateCourseViewModel
@@ -125,9 +129,9 @@ namespace ExaminationSystem.Controllers
                 Description = viewModel.Description == "string" ? currentCourse.Description :viewModel.Description,
                 Hours = viewModel.Hours != 0 ? viewModel.Hours : currentCourse.Hours,
                 InstructorId = viewModel.InstructorId != 0 ? viewModel.InstructorId : currentCourse.Instructor.ID
-
             };
-            
+            // await _courseService.Update(dto);
+            /*
             var dto = new UpdateCourseDTO
             {
                 
@@ -136,8 +140,9 @@ namespace ExaminationSystem.Controllers
                 Hours = viewModel.Hours,
                 InstructorId = viewModel.InstructorId
             };
-            _courseService.Update(courseid, dto);
-            return true;
+            */
+            await _courseService.Update(_mapper.Map<UpdateCourseDTO>(viewModel));
+            
         }
         
 
@@ -146,7 +151,7 @@ namespace ExaminationSystem.Controllers
         [HttpDelete]
         public async Task<bool> SoftDelete(int id)
         {
-            _courseService.SoftDelete(id);
+            await _courseService.SoftDelete(id);
 
             return true;
         }
