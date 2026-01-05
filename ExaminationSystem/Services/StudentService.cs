@@ -151,32 +151,33 @@ namespace ExaminationSystem.Services
 
             return true;
         }
-        public async Task SubmitAnswers(int studentId, int examId, List<StudentAnswerDTO> answers)
+        public async Task SubmitAnswers( List<StudentAnswerDTO> answers)
         {
-           
             foreach (var answer in answers)
-
             {
                 await _studentAnswerRepository.Add(new StudentAnswer
                 {
-                    StudentId = studentId,
-                    ExamId = examId,
+                    StudentId = answer.StudentId,
+                    ExamId = answer.ExamId,
                     QuestionId = answer.QuestionId,
                     SelectedChoiceId = answer.SelectedChoiceId
                 });
             }
         }
 
-        public ExamResultDTO ViewResult(int studentId,int examId)
+        public async Task StartExam(StudentExamDTO studentExamDTO)
         {
-            var correctCount = _studentAnswerRepository.CountCorrectAnswers(studentId,examId);
-            var total = _studentAnswerRepository.GetAnswersByStudentExam(studentId,examId).Count();
-
-            return new ExamResultDTO
-            {
-                Score = (decimal)correctCount / total * 100
-            };
+            await _studentExamRepository.StartExam(studentExamDTO.StudentId, studentExamDTO.ExamId);
         }
+        public async Task IsExamTimeExpired(StudentExamDTO studentExamDTO) 
+        {
+            await _studentExamRepository.IsExamTimeExpired(studentExamDTO.StudentId, studentExamDTO.ExamId);
+        }
+        public async Task SubmitExam(StudentExam studentExam, List<StudentAnswer> answers)
+        {
+
+        }
+
         public async Task<List<Course>> GetCoursesForStudent(int studentId)
         {
             if (!_studentRepository.IsExist(studentId))
@@ -208,14 +209,11 @@ namespace ExaminationSystem.Services
         {
             if (!_studentRepository.IsExist(studentId))
                 throw new Exception("Student Not Found");
-            
-            var res= _studentExamRepository.GetByStudent(studentId)
-                .Include(se => se.Exam)
-                .AsNoTracking()
-                .ToList();
-            
 
-            return _mapper.Map<IEnumerable<GetExamsForStudentDTO>>(res);
+            var exams = _studentExamRepository.Get(se => se.StudentId == studentId).Include(se => se.Exam)
+                    .Where(se => !se.Exam.IsDeleted).AsNoTracking().ToList();
+           
+            return _mapper.Map<IEnumerable<GetExamsForStudentDTO>>(exams);
         }
 
         }

@@ -44,33 +44,15 @@ namespace ExaminationSystem.Repositories
             _context.SaveChanges();
         }
 
-
-        //--------------------------------SRS BUSINESS HELPERS
-
-
-        //Get all answers for a specific Student Exam attempt
         public IEnumerable<StudentAnswer> GetAnswersByStudentExam(int studentId,int examId)
         {
             var res= _context.StudentAnswers.Where(sa => sa.StudentId == studentId && sa.ExamId == examId).AsNoTracking().ToList();
             return res;
         }
 
-        // Count correct answers
         public int CountCorrectAnswers(int studentId,int examId)
         {
             return _context.StudentAnswers.Count(sa => sa.StudentId == studentId&&sa.ExamId==examId && sa.SelectedChoice.IsCorrect);
-        }
-        public IEnumerable<StudentAnswer> GetAnswersByStudentExam(int studentExamId)
-        {
-            var res= _context.StudentAnswers.Where(sa => sa.StudentExam.ID == studentExamId).AsNoTracking().ToList();
-            return res;
-        }
-
-        public void DeleteByStudentExam(int studentExamId)
-        {
-            var answers = _context.StudentAnswers.Where(sa => sa.StudentExam.ID == studentExamId);
-            _context.StudentAnswers.RemoveRange(answers);
-            _context.SaveChanges();
         }
 
         internal bool IsAnswered(int studentId, int examId, int questionId)

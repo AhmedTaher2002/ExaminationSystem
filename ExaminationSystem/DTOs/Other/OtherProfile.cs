@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using ExaminationSystem.DTOs.Choice;
 using ExaminationSystem.ViewModels.Other;
 
 namespace ExaminationSystem.DTOs.Other
@@ -7,7 +8,12 @@ namespace ExaminationSystem.DTOs.Other
     {
         public OtherProfile() { 
             CreateMap<StudentCourseViewModel,StudentCourseDTO>();
+            CreateMap<ExamQuestionViewModel,ExamQuestionDTO>();
+            CreateMap<ExamResultViewModel,ExamResultDTO>();
+            CreateMap<StudentAnswerViewModel,StudentAnswerDTO>();
+            CreateMap<GetExamsForStudentDTO, GetExamsForStudentViewModel>();
 
+            
         }
     }
 }

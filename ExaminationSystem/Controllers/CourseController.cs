@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
 using ExaminationSystem.DTOs.Course;
+using ExaminationSystem.DTOs.Student;
 using ExaminationSystem.Services;
 using ExaminationSystem.ViewModels.Course;
 using ExaminationSystem.ViewModels.Instructor;
+using Microsoft.AspNetCore.Mvc;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
-using AutoMapper;
 
 namespace ExaminationSystem.Controllers
 {
@@ -13,21 +14,19 @@ namespace ExaminationSystem.Controllers
     [ApiController]
     public class CourseController : ControllerBase
     {
-        CourseService _courseService;
-        IMapper _mapper;
+        private readonly CourseService _courseService;
+        private readonly IMapper _mapper;
         public CourseController(IMapper mapper)
         {
             _mapper= mapper;
             _courseService = new CourseService(mapper);
         }
-
-
         
         [HttpGet]
-        public IEnumerable<GetAllCoursesViewModel> GetAll() // IQueryable and Serilization 
+        public IEnumerable<GetAllCoursesViewModel> GetAll()  
         {
-
             var Courses = _courseService.GetAll();
+            return _mapper.Map<IEnumerable<GetAllCoursesViewModel>>(Courses);
             /*
             List<GetAllCoursesViewModel> result = new List<GetAllCoursesViewModel>();
             foreach (var course in Courses)
@@ -49,17 +48,14 @@ namespace ExaminationSystem.Controllers
             }
             return result.ToList();
             */
-            return _mapper.Map<IEnumerable<GetAllCoursesViewModel>>(Courses);
-
         }
-
-
 
         [HttpGet]
         public async Task<GetByIdCourseViewModel> GetByID(int id)
         {
-           
-            var res = await _courseService.GetByID(id);
+            var course =_mapper.Map<GetByIdCourseViewModel>(await _courseService.GetByID(id));
+            return course;
+            /*
             var courseViewModel = new GetByIdCourseViewModel
             {
                 ID = res.ID,
@@ -73,15 +69,16 @@ namespace ExaminationSystem.Controllers
                 }
             };
             return courseViewModel;
+            */
         }
 
-
-
         [HttpGet]
-        public IEnumerable<GetAllCoursesViewModel> Get(int? courseID, string? courseName, int? courseHours) // IQueryable and Serilization // IList For best practice
+        public IEnumerable<GetAllCoursesViewModel> Get(int? courseID, string? courseName, int? courseHours) 
         {
             var res = _courseService.Get(courseID, courseName, courseHours);
-            List<GetAllCoursesViewModel> getAllCoursesViewModel = new List<GetAllCoursesViewModel>();
+            return _mapper.Map<IEnumerable<GetAllCoursesViewModel>>(res);
+            /*
+            List<GetAllCoursesViewModel> getAllCoursesViewModel = new();
             foreach (var item in res)
             {
                 getAllCoursesViewModel.Add(new GetAllCoursesViewModel
@@ -97,13 +94,13 @@ namespace ExaminationSystem.Controllers
                 });
             }
             return getAllCoursesViewModel;
+            */
         }
-
-
 
         [HttpPost]
         public async Task Create(CreateCourseViewModel course)
         {
+            await _courseService.Create(_mapper.Map<CreateCourseDTO>(course));
             /*
             var dto = new CreateCourseDTO
             {
@@ -113,24 +110,12 @@ namespace ExaminationSystem.Controllers
                InstructorID=course.InstructorID
             };
             await _courseService.Create(dto);*/
-            await _courseService.Create(_mapper.Map<CreateCourseDTO>(course));
-           
         }
-
 
         [HttpPut]
         public async Task Update(int courseid,UpdateCourseViewModel viewModel)
         {
-            var currentCourse = _courseService.GetByID(courseid).Result;
-            viewModel = new UpdateCourseViewModel
-            {
-                
-                Name = viewModel.Name =="string"? currentCourse.Name: viewModel.Name,
-                Description = viewModel.Description == "string" ? currentCourse.Description :viewModel.Description,
-                Hours = viewModel.Hours != 0 ? viewModel.Hours : currentCourse.Hours,
-                InstructorId = viewModel.InstructorId != 0 ? viewModel.InstructorId : currentCourse.Instructor.ID
-            };
-            // await _courseService.Update(dto);
+            await _courseService.Update(courseid,_mapper.Map<UpdateCourseDTO>(viewModel));
             /*
             var dto = new UpdateCourseDTO
             {
@@ -140,30 +125,29 @@ namespace ExaminationSystem.Controllers
                 Hours = viewModel.Hours,
                 InstructorId = viewModel.InstructorId
             };
+            await _courseService.Update(dto);
             */
-            await _courseService.Update(_mapper.Map<UpdateCourseDTO>(viewModel));
-            
         }
         
-
-
-
         [HttpDelete]
         public async Task<bool> SoftDelete(int id)
         {
             await _courseService.SoftDelete(id);
-
             return true;
         }
 
-
         [HttpDelete]
         public async Task DeleteCourse(int id)
-        {             //real delete
-            var res =_courseService.HardDelete(id);
-            
+        {            
+             await _courseService.HardDelete(id);
         }
 
+        [HttpGet]
+        public IEnumerable<GetAllStudentsDTO> GetStudents(int courseId)
+        {
+            return _courseService.GetStudents(courseId);
+        }
+        
         [HttpPost]
         public async Task<bool> AssignExamToCourse(int courseID, int examID)
         {
@@ -171,7 +155,10 @@ namespace ExaminationSystem.Controllers
             return res.Result;
         }
 
-   
-
+        [HttpPut]
+        public async Task SoftDeleteAllExamsFromCourse(int courseID)
+        {
+            await _courseService.SoftDeleteAllExamsFromCourse(courseID);
+        }
     }
 }

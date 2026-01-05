@@ -1,6 +1,8 @@
 ﻿using ExaminationSystem.Data;
 using ExaminationSystem.DTOs.Choice;
+using ExaminationSystem.DTOs.Other;
 using ExaminationSystem.Models;
+using ExaminationSystem.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -38,8 +40,7 @@ namespace ExaminationSystem.Repositories
         }
         public async Task SoftDelete(int examId, int questionId)
         {
-            var res = GetWithTracking().FirstOrDefault(a=>a.ExamId==examId&&a.QuestionId==questionId&&!a.IsDeleted) ??throw new Exception("exam Question Not Found"); ;
-
+            var res = GetWithTracking().FirstOrDefault(a=>a.ExamId== examId&& a.QuestionId== questionId&& !a.IsDeleted) ??throw new Exception("exam Question Not Found"); 
             res.IsDeleted = true;
             _context.ExamQuestions.Update(res);
             await _context.SaveChangesAsync();
@@ -53,28 +54,18 @@ namespace ExaminationSystem.Repositories
              _context.ExamQuestions.Remove(res);
              await _context.SaveChangesAsync();
         }
-        //--------------------------------SRS BUSINESS HELPERS
 
-
-        // Check if question already assigned to exam
-        public bool IsQuestionAssigned(int examId, int questionId)
-        {
-            return _context.ExamQuestions.Any(eq => eq.ExamId == examId && eq.QuestionId == questionId);
-        }
-
-        // Get all questions in an exam
         public IEnumerable<ExamQuestion> GetQuestionsByExam(int examId)
         {
-            return _context.ExamQuestions.AsNoTracking().ToList();
+            var Questions= _context.ExamQuestions.AsNoTracking().Where(eq=>eq.ExamId==examId).ToList();
+            return Questions;
         }
 
-        // Get exams containing a question (question reuse)
-        public IEnumerable<ExamQuestion> GetExamsByQuestion(int questionId)
+        internal bool IsAssigned(ExamQuestionDTO examQuestionDTO)
         {
-            return _context.ExamQuestions.AsNoTracking().ToList();
+            return _context.ExamQuestions.Any(eq => eq.ExamId == examQuestionDTO.ExamId && eq.QuestionId == examQuestionDTO.QuestionId&&!eq.IsDeleted);
         }
 
-        // Remove question from exam
         public bool RemoveQuestion(int examId, int questionId)
         {
             var eq = _context.ExamQuestions.FirstOrDefault(x => x.ExamId == examId && x.QuestionId == questionId);
@@ -87,26 +78,12 @@ namespace ExaminationSystem.Repositories
             return true;
         }
 
-        // Remove all questions from exam (used before auto-generation)
         public void RemoveAllQuestionsFromExam(int examId)
         {
             var questions = _context.ExamQuestions.Where(eq => eq.ExamId == examId);
 
             _context.ExamQuestions.RemoveRange(questions);
             _context.SaveChanges();
-        }
-
-
-        internal bool IsAssigned(int examId, int questionId)
-        {
-            return _context.ExamQuestions.Any(eq => eq.ExamId == examId && eq.QuestionId == questionId);
-        }
-
-        internal IQueryable<ExamQuestion> GetByExam(int examId)
-        {
-            var query= _context.ExamQuestions.Where(eq => eq.ExamId == examId).AsQueryable();
-            return query;
-
         }
     }
 }

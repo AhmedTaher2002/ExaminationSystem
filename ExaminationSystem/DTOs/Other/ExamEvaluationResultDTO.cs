@@ -1,6 +1,6 @@
-﻿namespace ExaminationSystem.ViewModels.Other
+﻿namespace ExaminationSystem.DTOs.Other
 {
-    public class ExamEvaluationResultViewModel
+    public class ExamEvaluationResultDTO
     {
         public decimal Score { get; set; }
         public int StudentId { get; set; }

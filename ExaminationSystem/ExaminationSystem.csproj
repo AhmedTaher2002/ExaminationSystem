@@ -17,9 +17,4 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="DTOs\NewFolder\" />
-    <Folder Include="DTOs\StudentExamProfile\" />
-  </ItemGroup>
-
 </Project>

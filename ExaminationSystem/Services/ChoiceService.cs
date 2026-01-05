@@ -19,8 +19,6 @@ namespace ExaminationSystem.Services
             _mapper = mapper;
 
         }
-
-
         public IEnumerable<GetAllChoicesDTO> GetAll()
         {
             /*return _choiceRepository.GetAll()
@@ -40,7 +38,8 @@ namespace ExaminationSystem.Services
             if (!_choiceRepository.IsExist(id))
                 throw new Exception("Choice Not Found");
 
-            var choice = await _choiceRepository.GetByID(id);
+            var choice = await _choiceRepository.GetByIDWithTracking(id);
+            return _mapper.Map<GetChoiceByIdDTO>(choice);
             /*var res= new GetChoiceByIdDTO
             {
                 ID = choice.ID,
@@ -49,9 +48,7 @@ namespace ExaminationSystem.Services
                 QuestionId = choice.QuestionId
             return res;
             };*/
-            return _mapper.Map<GetChoiceByIdDTO>(choice);
         }
-
         public async Task<GetAllChoicesDTO> Get(int? id,string? text) { 
             var query = _choiceRepository.GetAll().AsQueryable();
             if (id.HasValue)
@@ -88,7 +85,6 @@ namespace ExaminationSystem.Services
             Choice choice= _mapper.Map<Choice>(dto);
             await _choiceRepository.Add(choice);
         }
-
         public async Task Update(int id, UpdateChoiceDTO dto)
         {
             if (!_choiceRepository.IsExist(id))
@@ -96,7 +92,13 @@ namespace ExaminationSystem.Services
 
             if (!_questionRepository.IsExist(dto.QuestionId))
                 throw new Exception("Question Not Found");
-
+            var choice =await GetByID(id);
+            dto = new ()
+            {
+                Text = dto.Text == "string" ? choice.Text: dto.Text,
+                IsCorrect = dto.IsCorrect==default?choice.IsCorrect:dto.IsCorrect,
+                QuestionId=dto.QuestionId==0?choice.QuestionId:dto.QuestionId
+            };
             /*
             Choice choice =new Choice
             {
@@ -106,8 +108,8 @@ namespace ExaminationSystem.Services
                 QuestionId = dto.QuestionId
             };
             */
-            Choice choice = _mapper.Map<Choice>(dto);
-            await _choiceRepository.Update(choice);
+            var choiceUpdate = _mapper.Map<Choice>(dto);
+            await _choiceRepository.Update(choiceUpdate);
         }
         public async Task SoftDelete(int choiceId)
         {
@@ -125,7 +127,7 @@ namespace ExaminationSystem.Services
         }
         
         //--------------------------------SRS CONTROLLER HELPERS
-        public List<GetAllChoicesDTO> GetByQuestionID(int questionId)
+        public List<GetAllChoicesDTO> GetChoiceForQuestionID(int questionId)
         {
             if (!_questionRepository.IsExist(questionId))
                 throw new Exception("Question Not Found");

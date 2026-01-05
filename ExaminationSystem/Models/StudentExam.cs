@@ -16,6 +16,8 @@ namespace ExaminationSystem.Models
 
         public bool IsSubmitted { get; set; }
         public ICollection<StudentAnswer> Answers { get; set; } = new List<StudentAnswer>();
+        public DateTime StartedTime { get; internal set; }
+        public int DurationMinutes { get; set; } // exam time
 
     }
 } 

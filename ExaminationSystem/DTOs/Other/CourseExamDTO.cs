@@ -1,8 +1,8 @@
 ﻿namespace ExaminationSystem.DTOs.Other
 {
-    public class ExamQuestionDTO
+    public class CourseExamDTO
     {
+        public int CourseId { get; set; }
         public int ExamId { get; set; }
-        public int QuestionId { get; set; }
     }
 }

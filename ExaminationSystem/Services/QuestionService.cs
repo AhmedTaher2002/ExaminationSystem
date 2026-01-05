@@ -31,7 +31,6 @@ namespace ExaminationSystem.Services
                 }).AsNoTracking().ToList();*/
 
         }
-
         public async Task<GetQuestionByIdDTO> GetByID(int id)
         {
             if (!_questionRepository.IsExist(id))
@@ -62,9 +61,7 @@ namespace ExaminationSystem.Services
             {
                 query = query.Where(q => q.Level == level.Value);
             }
-            var question = await query.AsNoTracking().FirstOrDefaultAsync();
-            if (question == null)
-                throw new Exception("Question Not Found");
+            var question = await query.AsNoTracking().FirstOrDefaultAsync()??throw new Exception("Question Not Found");
             return _mapper.Map<GetAllQuestionsDTO>(question);
             /*
             return new GetAllQuestionsDTO
@@ -75,7 +72,6 @@ namespace ExaminationSystem.Services
             };
             */
         }
-
         public async Task Create(CreateQuestionDTO dto)
         {
             /*
@@ -89,8 +85,7 @@ namespace ExaminationSystem.Services
             var question = _mapper.Map<Question>(dto);
             await _questionRepository.Add(question);
         }
-
-        public void Update(int id, UpdateQuestionDTO dto)
+        public async Task Update(int id, UpdateQuestionDTO questionDto)
         {
             if (!_questionRepository.IsExist(id))
                 throw new Exception("Question Not Found");
@@ -102,10 +97,14 @@ namespace ExaminationSystem.Services
                 Level = dto.Level
             };
             */
-            var question = _mapper.Map<Question>(dto);
-            _questionRepository.Update(question);
+            var question = await _questionRepository.GetByIDWithTracking(id);
+            questionDto = new()
+            {
+                Level=questionDto.Level==default?question.Level:questionDto.Level,
+                Text=questionDto.Text=="string"?question.Text:questionDto.Text
+            };
+            await _questionRepository.Update(_mapper.Map<Question>(questionDto));
         }
-
         public async Task<bool> SoftDelete(int questionId)
         {
             if (!_questionRepository.IsExist(questionId))
@@ -114,7 +113,6 @@ namespace ExaminationSystem.Services
             await _questionRepository.SoftDelete(questionId);
             return true;
         }
-
         public async Task<bool>HardDelete(int questionId)
         {
             if (!_questionRepository.IsExist(questionId))
@@ -123,16 +121,14 @@ namespace ExaminationSystem.Services
             await _questionRepository.HardDelete(questionId);
             return true;
         }
-
         public IEnumerable<GetAllQuestionsDTO> GetInstructorQuestions(int instructorId)
         {
             var questions = _questionRepository.Get(q => q.InstructorId == instructorId).ToList();
             return _mapper.Map<IEnumerable<GetAllQuestionsDTO>>(questions);
         }
-
-        public IEnumerable<Question> GetByLevel(QuestionLevel level)
+        public IEnumerable<GetAllQuestionsDTO> GetByLevel(QuestionLevel level)
         { 
-            return _questionRepository.Get(q => q.Level == level); 
+            return _mapper.Map<IEnumerable<GetAllQuestionsDTO>>(_questionRepository.Get(q => q.Level == level)); 
         }
     }
 }

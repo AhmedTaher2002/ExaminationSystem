@@ -69,7 +69,7 @@ namespace ExaminationSystem.Services
             return dto;
             */
         }
-        public async Task<GetAllExamsDTO>Get(int? id, string? title, ExamType? type)
+        public async Task<IEnumerable<GetAllExamsDTO>>Get(int? id, string? title, ExamType? type)
         {
             var query = _examRepository.GetAll().AsQueryable();
             if (id.HasValue)
@@ -96,7 +96,7 @@ namespace ExaminationSystem.Services
             };
             return dto;
             */
-            return _mapper.Map<GetAllExamsDTO>(exam);
+            return _mapper.Map<IEnumerable<GetAllExamsDTO>>(exam);
 
         }
 
@@ -149,46 +149,43 @@ namespace ExaminationSystem.Services
 
             await _examRepository.HardDelete(examId);
         }
-        // Assign questions to exam
-        public async Task AssignQuestion(int examId, int questionId)
-        {
-            if (!_examRepository.IsExist(examId)) throw new Exception("Exam Not Exsist");
-            if (!_examRepository.IsExist(questionId)) throw new Exception("Question Not Exsist");
-            if (_examQuestionRepository.IsAssigned(examId, questionId))
-                throw new Exception("Question is Assign to Exam");
-            await _examQuestionRepository.Add(new ExamQuestion { ExamId = examId, QuestionId = questionId });
-        }
-        // Remove question from exam
-        public async Task<bool> RemoveQuestionFromExam(int examId, int questionId)
-        {
-            if(!_examRepository.IsExist(examId))
-                throw new Exception("Exam is Not Exsist");
-            if(!_questionRepository.IsExist(questionId))
-                throw new Exception("Exam is Not Exsist");
-            await _examQuestionRepository.SoftDelete(examId, questionId);
-            return true;
-        }
-        // Get exam questions
-        public List<GetAllQuestionsDTO> GetExamQuestions(int examId)
+        public IEnumerable<GetAllQuestionsDTO> GetExamQuestions(int examId)
         {
             var questions = _examQuestionRepository.GetQuestionsByExam(examId);
             return _mapper.Map<List<GetAllQuestionsDTO>>(questions);
         }
-        public async Task<ExamResultDTO> EvaluateExam(int studentId,int examId)
+        public async Task AssignQuestion(ExamQuestionDTO examQuestionDTO)
         {
-            int correct = _studentAnswerRepository.CountCorrectAnswers( studentId,  examId);
-            int total = _studentAnswerRepository.GetAnswersByStudentExam( studentId,  examId).Count();
-            if (_studentExamRepository.IsAssigned(studentId, examId))
+            if (!_examRepository.IsExist(examQuestionDTO.ExamId)) throw new Exception("Exam Not Exsist");
+            if (!_examRepository.IsExist(examQuestionDTO.QuestionId)) throw new Exception("Question Not Exsist");
+            if (_examQuestionRepository.IsAssigned(examQuestionDTO))
+                throw new Exception("Question is Assign to Exam");
+            //await _examQuestionRepository.Add(new ExamQuestion { ExamId = examQuestionDTO.ExamId, QuestionId = examQuestionDTO.QuestionId });
+            await _examQuestionRepository.Add(_mapper.Map<ExamQuestion>(examQuestionDTO));
+        }
+        public async Task<ExamEvaluationResultDTO> EvaluateExamforStudent(StudentExamDTO studentExamDTO)
+        {
+            if (!_examRepository.IsExist(studentExamDTO.ExamId))
+                { throw new Exception("Exam Not Found"); }
+            if (!_studentRepository.IsExist(studentExamDTO.StudentId))
+                { throw new Exception("Student not found"); }
+
+            int correct = _studentAnswerRepository.CountCorrectAnswers(studentExamDTO.StudentId, studentExamDTO.ExamId);
+            int total = _studentAnswerRepository.GetAnswersByStudentExam(studentExamDTO.StudentId, studentExamDTO.ExamId).Count();
+            if (_studentExamRepository.IsAssigned(studentExamDTO.StudentId, studentExamDTO.ExamId))
                 throw new Exception("Student not assigned");
-            
-            var res= new ExamResultDTO
+
+            var student =await _studentRepository.GetByID(studentExamDTO.StudentId);
+            var res = new ExamEvaluationResultDTO
             {
+                StudentId = studentExamDTO.StudentId,
+                FullName = student.FullName,
                 Score = (decimal)correct / total * 100
             };
             var studentExam = new StudentExam
             {
-                StudentId = studentId,
-                ExamId = examId,
+                StudentId = studentExamDTO.StudentId,
+                ExamId = studentExamDTO.ExamId,
                 Score = res.Score
 
             };
@@ -196,8 +193,49 @@ namespace ExaminationSystem.Services
             await _studentExamRepository.Update(studentExam);
             return res;
         }
+        public async Task<IEnumerable<ExamEvaluationResultDTO>> EvaluateAllExams(int examId)
+        {
+            if (!_examRepository.IsExist(examId))
+                throw new Exception("Exam Not Found");
 
-        // Automatic balanced assignment
+            var studentExams = _studentExamRepository
+                .Get(se => se.ExamId == examId)
+                .AsNoTracking()
+                .ToList();
+
+            if (!studentExams.Any(a=>a.IsDeleted))
+                throw new Exception("No students assigned to this exam");
+
+            var results = new List<ExamEvaluationResultDTO>();
+
+            foreach (var se in studentExams)
+            {
+                int correct = _studentAnswerRepository
+                    .CountCorrectAnswers(se.StudentId, examId);
+
+                int total = _studentAnswerRepository
+                    .GetAnswersByStudentExam(se.StudentId, examId)
+                    .Count();
+
+                if (total == 0)
+                    continue;
+
+                decimal score = (decimal)correct / total * 100;
+
+                se.Score = score;
+                se.IsSubmitted = true;
+
+                await _studentExamRepository.Update(se);
+
+                results.Add(new ExamEvaluationResultDTO
+                {
+                    StudentId = se.StudentId,
+                    Score = score
+                });
+            }
+
+            return results;
+        }
         public async Task AutoGenerateQuestions(int examId, int totalQuestions)
         {
             _examQuestionRepository.RemoveAllQuestionsFromExam(examId);
@@ -209,7 +247,7 @@ namespace ExaminationSystem.Services
             var hard = _questionRepository.Get(q => q.Level == QuestionLevel.Hard).Take(perLevel);
 
             foreach (var q in simple.Concat(medium).Concat(hard))
-                await AssignQuestion(examId, q.ID);
+                await AssignQuestion(new ExamQuestionDTO { ExamId = examId ,QuestionId=q.ID});
         }
     }
 }

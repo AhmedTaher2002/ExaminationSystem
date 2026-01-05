@@ -113,7 +113,12 @@ namespace ExaminationSystem.Services
         {
             if (!_instructorRepository.IsExist(id))
                 throw new Exception("Instructor Not Found");
-
+            var instruc =await _instructorRepository.GetByIDWithTracking(id);
+            dto = new()
+            {
+                Email=dto.Name=="string"?instruc.Email:dto.Email,
+                Name=dto.Name=="string"?instruc.FullName:dto.Name,                
+            };
             /*
             Instructor instructor = new Instructor
             {
@@ -122,7 +127,6 @@ namespace ExaminationSystem.Services
                 Email = dto.Email
             };
             */
-
             var instructor = _mapper.Map<Instructor>(dto);
             await _instructorRepository.Update(instructor);
         }
@@ -141,56 +145,10 @@ namespace ExaminationSystem.Services
             
             await _instructorRepository.HardDelete(instructorId);
         }
-        public List<GetAllStudentsDTO> GetStudents(int courseId)
-        {
-            var students = _studentCourseRepository.GetStudentsByCourse(courseId);
-            return _mapper.Map<List<GetAllStudentsDTO>>(students);
-        }
-        public IEnumerable<GetStudentAnswersDTO> GetStudentAnswers(int studentId, int examId)
-        {
-            var res = _studentAnswerRepository.Get(studentId, examId)
-                .Include(a => a.Question).Include(a => a.SelectedChoice)
-                .AsNoTracking();
-            return _mapper.Map<IEnumerable<GetStudentAnswersDTO>>(res).ToList();
-
-        }
-        public async Task AssignStudentToCourse(StudentCourseDTO studentCourseDTO)
-        {
-            if (!_studentRepository.IsExist(studentCourseDTO.StudentId))
-                throw new Exception("Student Not Found");
-
-            if (!_courseRepository.IsExist(studentCourseDTO.CourseId))
-                throw new Exception("Course Not Found");
-
-            if (_studentCourseRepository.IsAssigned(studentCourseDTO.StudentId,studentCourseDTO.CourseId))
-                throw new Exception("Student Already Assigned To This Course");
-
-            StudentCourse studentCourse = new StudentCourse
-            {
-                StudentId = studentCourseDTO.StudentId,
-                CourseId = studentCourseDTO.CourseId
-            };
-
-            await _studentCourseRepository.Add(studentCourse);
-        }
-        public IEnumerable<GetAllCoursesDTO> GetMyCourses(int instructorId)
+        public IEnumerable<GetAllCoursesDTO> GeTCoursesForInstructor(int instructorId)
         { 
             var cources= _courseRepository.Get(c => c.InstructorId == instructorId).ToList();
             return _mapper.Map<IEnumerable<GetAllCoursesDTO>>(cources);
-        }
-        public async Task<bool> AssignExamToCourse(int courseID, int examID)
-        {
-            if (!_courseRepository.IsExist(courseID))
-                throw new Exception("Course Not Found");
-
-            if (!_examRepository.IsExist(examID))
-                throw new Exception("Exam Not Found");
-
-            var exam = await _examRepository.GetByID(examID);
-            exam.CourseId = courseID;
-
-            await _examRepository.Update(exam);
-            return true;
         }
         public IEnumerable<GetAllStudentsDTO> GetStudentsInCourse(int courseId)
         {
@@ -206,7 +164,7 @@ namespace ExaminationSystem.Services
         }
         public IEnumerable<GetAllQuestionsDTO> GetQuestionsForInstructor(int instructorId)
         {
-            var Questions=_questionRepository.Get(i=>i.InstructorId==instructorId).ToList();
+            var Questions=_questionRepository.Get(i=>i.InstructorId==instructorId&&!i.IsDeleted).ToList();
             return _mapper.Map< IEnumerable<GetAllQuestionsDTO>>(Questions);
         }
         public IEnumerable<GetAllQuestionsDTO> GetQuestionsByExam(int examId)
@@ -217,31 +175,74 @@ namespace ExaminationSystem.Services
             var res = _examQuestionRepository.GetQuestionsByExam(examId);
             return _mapper.Map<IEnumerable<GetAllQuestionsDTO>>(res);
         }
-        public async Task AddQuestionToExam(int examId, int questionId)
+        public IEnumerable<GetStudentAnswersDTO> GetStudentAnswers(StudentExamDTO studentExamDTO)
         {
-            if (!_examRepository.IsExist(examId))
+            var res = _studentAnswerRepository.Get(studentExamDTO.StudentId, studentExamDTO.ExamId)
+                .Include(a => a.Question).Include(a => a.SelectedChoice)
+                .AsNoTracking();
+            var studentanswer= _mapper.Map<IEnumerable<GetStudentAnswersDTO>>(res).ToList();
+            return studentanswer;
+
+        }
+        public async Task AssignStudentToCourse(StudentCourseDTO studentCourseDTO)
+        {
+            if (!_studentRepository.IsExist(studentCourseDTO.StudentId))
+                throw new Exception("Student Not Found");
+
+            if (!_courseRepository.IsExist(studentCourseDTO.CourseId))
+                throw new Exception("Course Not Found");
+
+            if (_studentCourseRepository.IsAssigned(studentCourseDTO.StudentId,studentCourseDTO.CourseId))
+                throw new Exception("Student Already Assigned To This Course");
+
+            /*
+            StudentCourse studentCourse = new StudentCourse
+            {
+                StudentId = studentCourseDTO.StudentId,
+                CourseId = studentCourseDTO.CourseId
+            };
+            await _studentCourseRepository.Add(studentCourse);
+            */
+            await _studentCourseRepository.Add(_mapper.Map<StudentCourse>(studentCourseDTO));
+        }
+        public async Task<bool> AssignExamToCourse(CourseExamDTO courseExamDTO)
+        {
+            if (!_courseRepository.IsExist(courseExamDTO.CourseId))
+                throw new Exception("Course Not Found");
+
+            if (!_examRepository.IsExist(courseExamDTO.ExamId))
                 throw new Exception("Exam Not Found");
 
-            if (!_questionRepository.IsExist(questionId))
+            var exam = await _examRepository.GetByID(courseExamDTO.ExamId);
+            exam.CourseId = courseExamDTO.CourseId;
+            await _examRepository.Update(exam);
+            return true;
+        }
+        public async Task AddQuestionToExam(ExamQuestionDTO examQuestionDTO)
+        {
+            if (!_examRepository.IsExist(examQuestionDTO.ExamId))
+                throw new Exception("Exam Not Found");
+
+            if (!_questionRepository.IsExist(examQuestionDTO.QuestionId))
                 throw new Exception("Question Not Found");
 
-            if (_examQuestionRepository.IsAssigned(examId, questionId))
+            if (_examQuestionRepository.IsAssigned(examQuestionDTO))
                 throw new Exception("Question Already Added To Exam");
 
             ExamQuestion examQuestion = new ()
             {
-                ExamId = examId,
-                QuestionId = questionId
+                ExamId = examQuestionDTO.ExamId,
+                QuestionId = examQuestionDTO.QuestionId
             };
 
             await _examQuestionRepository.Add(examQuestion);
         }
-        public async Task RemoveQuestionFromExam(int examId, int questionId)
+        public async Task RemoveQuestionFromExam(ExamQuestionDTO examQuestionDTO)
         {
-            if (!_examQuestionRepository.IsAssigned(examId, questionId))
+            if (!_examQuestionRepository.IsAssigned(examQuestionDTO))
                 throw new Exception("Question Not Assigned To Exam");
 
-            await _examQuestionRepository.SoftDelete(examId, questionId);
+            await _examQuestionRepository.SoftDelete(examQuestionDTO.ExamId, examQuestionDTO.QuestionId);
         }
 
     }

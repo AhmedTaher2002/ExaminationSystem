@@ -19,7 +19,7 @@ namespace ExaminationSystem
             builder.Services.AddAutoMapper(typeof(ExaminationSystem.DTOs.Instructor.InstructorProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(ExaminationSystem.DTOs.Question.QuestionProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(ExaminationSystem.DTOs.Student.StudentProfile).Assembly);
-
+            builder.Services.AddScoped<ExaminationSystem.Filters.GlobalErrorHandlerMiddleware>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -30,6 +30,8 @@ namespace ExaminationSystem
             }
 
             app.UseHttpsRedirection();
+
+            app.UseMiddleware<ExaminationSystem.Filters.GlobalErrorHandlerMiddleware>();
 
             app.UseAuthorization();
 

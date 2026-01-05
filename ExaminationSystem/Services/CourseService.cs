@@ -119,11 +119,19 @@ namespace ExaminationSystem.Services
             await _courseRepository.Add(course);
         }
 
-        public async Task Update( UpdateCourseDTO courseDTO)
+        public async Task Update(int courseid, UpdateCourseDTO courseDTO)
         {
 
             if (!_instructorRepository.IsExist(courseDTO.InstructorId))
                 throw new Exception("Instructor Not Found");
+            var currentCourse =await _courseRepository.GetByIDWithTracking(courseid);
+            courseDTO = new()
+            {
+                Name = courseDTO.Name == "string" ? currentCourse.Name : courseDTO.Name,
+                Description = courseDTO.Description == "string" ? currentCourse.Description : courseDTO.Description,
+                Hours = courseDTO.Hours != 0 ? currentCourse.Hours : courseDTO.Hours,
+                InstructorId = courseDTO.InstructorId != 0 ? courseDTO.InstructorId : currentCourse.InstructorId
+            };
             /*
             var course = new Course
             {
@@ -154,16 +162,12 @@ namespace ExaminationSystem.Services
             //Hard Delete all exams related to this course
             await _courseRepository.HardDelete(CourseId);
         }
-        
-        
-        //--------------------------------SRS CONTROLLER HELPERS 
 
-        public List<GetAllStudentsDTO> GetStudents(int courseId)
+        public IEnumerable<GetAllStudentsDTO> GetStudents(int courseId)
         {
             var students = _studentCourseRepository.GetStudentsByCourse(courseId);
             return _mapper.Map<List<GetAllStudentsDTO>>(students);
         }
-        
 
         public async Task<bool> AssignExamToCourse(int courseID, int examID)
         {
@@ -192,6 +196,7 @@ namespace ExaminationSystem.Services
                 await _examRepository.SoftDelete(exam.ID);
             }
         }
+
         public async Task HardDeleteAllExamsFromCourse(int courseID)
         {
             if (!_courseRepository.IsExist(courseID))

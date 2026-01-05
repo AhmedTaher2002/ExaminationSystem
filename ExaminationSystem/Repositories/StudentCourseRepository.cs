@@ -24,7 +24,7 @@ namespace ExaminationSystem.Repositories
             return res;
 
         }
-        public async Task<StudentCourse?> GetBystudentidWithTracking(int studentId)
+        public async Task<StudentCourse> GetBystudentidWithTracking(int studentId)
         {
             var res = await _context.StudentCourses.Where(sc=>sc.StudentId==studentId&&!sc.IsDeleted).AsTracking().FirstOrDefaultAsync();
             return res;
@@ -34,16 +34,19 @@ namespace ExaminationSystem.Repositories
             var query = _context.StudentCourses.Where(sc => sc.StudentId == studentId && !sc.IsDeleted).AsQueryable();
             return query;
         }
+
         public async Task<StudentCourse?> GetWithTracking(StudentCourse studentCourse)
         {
             var res = await _context.StudentCourses.AsTracking().FirstOrDefaultAsync(sc => sc.StudentId== studentCourse.StudentId && sc.CourseId==studentCourse.StudentId&& !sc.IsDeleted);
             return res;
         }
+
         public async Task<StudentCourse?> Get(Expression<Func<StudentCourse,bool>> filter){
             var res = await _context.StudentCourses.Include(sc => sc.Student).Include(sc => sc.Course).AsNoTracking()
                 .FirstOrDefaultAsync(filter);
             return res;
         }
+
         public  IQueryable<StudentCourse> Get(int? studentId, int? courseId)
         {
             var query = _context.StudentCourses.AsQueryable();
@@ -57,11 +60,13 @@ namespace ExaminationSystem.Repositories
             }
             return query;
         }
+
         public async Task Add(StudentCourse studentCourse)
         {
             _context.StudentCourses.Add(studentCourse);
             await _context.SaveChangesAsync();
         }
+
         public async Task Update( StudentCourse StudentCourse)
         {
 
@@ -78,6 +83,7 @@ namespace ExaminationSystem.Repositories
             await _context.SaveChangesAsync();
 
         }
+
         public async Task SoftDelete(StudentCourse studentCourse)
         {
             var res = await GetWithTracking(studentCourse) ?? throw new Exception("StudentCourse Not Found");
@@ -86,6 +92,7 @@ namespace ExaminationSystem.Repositories
             _context.StudentCourses.Update(res);
             await _context.SaveChangesAsync();
         }
+
         public async Task HardDelete(StudentCourse studentCourse)
         {
             var res = await GetWithTracking(studentCourse) ?? throw new Exception("StudentCourse Not Found");
@@ -94,14 +101,10 @@ namespace ExaminationSystem.Repositories
             _context.StudentCourses.Remove(res);
             await _context.SaveChangesAsync();
         }
-        public IEnumerable<StudentCourse> GetCoursesByStudent(int studentId)
-        {
-            return _context.StudentCourses.Where(sc => sc.StudentId == studentId).AsNoTracking().ToList();
-        }
 
         public IEnumerable<StudentCourse> GetStudentsByCourse(int courseId)
         {
-            return _context.StudentCourses.AsNoTracking();
+            return _context.StudentCourses.AsNoTracking().Where(c=>c.CourseId==courseId);
         }
 
         internal bool IsAssigned(int studentId,int courseId )
@@ -109,9 +112,5 @@ namespace ExaminationSystem.Repositories
             var res= _context.StudentCourses.Any(sc => sc.StudentId == studentId && sc.CourseId == courseId);
             return res;
         }
-
-        
-        
-
     }
 }

@@ -4,11 +4,9 @@ namespace ExaminationSystem.DTOs.Other
 {
     public class GetExamsForStudentDTO
     {
-        string studentName {  get; set; }
+        public string Name {  get; set; }
         public string StudentId { get; set; }
 
         public IEnumerable<GetAllExamsDTO> getAllExamsDTO { get; set; }
-
-
     }
 }
