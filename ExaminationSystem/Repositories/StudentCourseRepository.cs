@@ -18,17 +18,13 @@ namespace ExaminationSystem.Repositories
             var res = _context.StudentCourses;
             return res;
         }
-        public async Task<StudentCourse?> GetbyID(int studentId, int courseId) { 
-            var res = await _context.StudentCourses.AsNoTracking()
-                .FirstOrDefaultAsync(sc => sc.StudentId == studentId && sc.CourseId == courseId&&sc.IsDeleted);
-            return res;
 
-        }
-        public async Task<StudentCourse> GetBystudentidWithTracking(int studentId)
-        {
-            var res = await _context.StudentCourses.Where(sc=>sc.StudentId==studentId&&!sc.IsDeleted).AsTracking().FirstOrDefaultAsync();
+        public async Task<StudentCourse?> GetbyID(int studentId, int courseId) 
+        { 
+            var res = await _context.StudentCourses.AsNoTracking().FirstOrDefaultAsync(sc => sc.StudentId == studentId && sc.CourseId == courseId&&sc.IsDeleted);
             return res;
         }
+
         internal IQueryable<StudentCourse> GetByStudentCourses(int studentId)
         {
             var query = _context.StudentCourses.Where(sc => sc.StudentId == studentId && !sc.IsDeleted).AsQueryable();

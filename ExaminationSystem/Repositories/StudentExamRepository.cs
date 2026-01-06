@@ -33,7 +33,7 @@ namespace ExaminationSystem.Repositories
 
         public async Task<StudentExam> GetWithTracking(int studentId, int examId)
         {
-            var res = await _context.StudentExam.AsTracking().FirstOrDefaultAsync(se => se.StudentId == studentId && se.ExamId == examId&&!se.IsDeleted)??throw new Exception ("Student Exam Not Found");
+            var res =  await _context.StudentExam.AsTracking().Where(se => se.StudentId == studentId && se.ExamId == examId&&!se.IsDeleted).FirstOrDefaultAsync()??throw new Exception ("Student Exam Not Found");
             return res;
         }
 
@@ -86,35 +86,10 @@ namespace ExaminationSystem.Repositories
             return res;
         }
 
-
-
-        public IEnumerable<StudentExam> GetExamResults(int examId)
+        public IQueryable<StudentExam> GetExamResults(int examId)
         {
-            return _context.StudentExam.Include(se => se.Student).Where(se => se.ExamId == examId && se.IsSubmitted)
-                .AsNoTracking().ToList();
-        }
-
-        public bool IsSubmitted(int studentExamId)
-        {
-            return _context.StudentExam.Any(se => se.ID == studentExamId && se.IsSubmitted);
-        }
-
-        public void SubmitExam(int studentExamId, int score)
-        {
-            var studentExam = _context.StudentExam.Find(studentExamId);
-
-            if (studentExam == null)
-                throw new Exception("StudentExam not found");
-
-            studentExam.Score = score;
-            studentExam.IsSubmitted = true;
-
-            _context.SaveChanges();
-        }
-
-        public StudentExam? GetByStudentAndExam(int studentId, int examId)
-        {
-            return _context.StudentExam.Include(se => se.Exam).FirstOrDefault(se => se.StudentId == studentId && se.ExamId == examId);
+            return _context.StudentExam.Where(se => se.ExamId == examId && se.IsSubmitted)
+                .AsNoTracking();
         }
 
         internal bool IsAssigned(int studentID,int examId)
@@ -122,20 +97,7 @@ namespace ExaminationSystem.Repositories
             var res= _context.StudentExam.AsNoTracking().Any(se=>se.StudentId==studentID&&se.ExamId==examId);
             return res;
         }
-        public async Task<StudentExam> StartExam(int studentId, int examId)
-        {
-            var studentExam = GetByStudentAndExam(studentId, examId)
-                ?? throw new Exception("Student is not assigned to this exam.");
-
-            if (studentExam.StartedTime != null)
-                throw new Exception("Exam already started");
-
-            studentExam.StartedTime = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return studentExam;
-        }
-
+        
         public async Task<bool> IsExamTimeExpired(int studentId, int examId)
         {
             var studentExam = await _context.StudentExam.Include(se => se.Exam).AsNoTracking()
@@ -148,28 +110,6 @@ namespace ExaminationSystem.Repositories
             var endTime = studentExam.StartedTime.AddMinutes(studentExam.DurationMinutes);
 
             return DateTime.UtcNow > endTime;
-        }
-
-        public async Task SubmitExam(StudentExam studentExam, List<StudentAnswer> answers)
-        {
-            if (await IsExamTimeExpired(studentExam.StudentId,studentExam.ExamId))
-                throw new Exception("Time is over. Cannot submit exam.");
-
-            _context.StudentAnswers.AddRange(answers);
-
-            int correct = answers.Count(a => a.SelectedChoice.IsCorrect);
-            int total = answers.Count;
-
-            studentExam.Score = total == 0 ? 0 : (decimal)correct / total * 100;
-            studentExam.IsSubmitted = true;
-
-            await _context.SaveChangesAsync();
-        }
-
-        internal IQueryable<StudentExam> GetByStudent(int studentId)
-        {
-            var query= _context.StudentExam.Where(se => se.StudentId == studentId).AsQueryable();
-            return query;
         }
     }
 }

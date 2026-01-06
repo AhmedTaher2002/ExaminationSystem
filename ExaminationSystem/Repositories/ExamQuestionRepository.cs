@@ -1,10 +1,6 @@
 ﻿using ExaminationSystem.Data;
-using ExaminationSystem.DTOs.Choice;
-using ExaminationSystem.DTOs.Other;
 using ExaminationSystem.Models;
-using ExaminationSystem.Models.Enums;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 
 namespace ExaminationSystem.Repositories
 {
@@ -22,9 +18,11 @@ namespace ExaminationSystem.Repositories
             var res = await _context.ExamQuestions.AsNoTracking().FirstOrDefaultAsync(eq => eq.ExamId == examId && eq.QuestionId == quetionId && !eq.IsDeleted);
             return res;
         }
+
         public IQueryable<ExamQuestion> GetWithTracking() { 
             return _context.ExamQuestions.AsTracking().AsQueryable();
         }
+
         public async Task<bool> Add(ExamQuestion examQuestion)
         {
             _context.ExamQuestions.Add(examQuestion);
@@ -38,6 +36,7 @@ namespace ExaminationSystem.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
+
         public async Task SoftDelete(int examId, int questionId)
         {
             var res = GetWithTracking().FirstOrDefault(a=>a.ExamId== examId&& a.QuestionId== questionId&& !a.IsDeleted) ??throw new Exception("exam Question Not Found"); 
@@ -45,6 +44,7 @@ namespace ExaminationSystem.Repositories
             _context.ExamQuestions.Update(res);
             await _context.SaveChangesAsync();
         }
+
         public async Task HardDelete(int examId, int questionId)
         {
             var res = GetWithTracking().FirstOrDefault(a => a.ExamId == examId && a.QuestionId == questionId && !a.IsDeleted);
@@ -61,9 +61,9 @@ namespace ExaminationSystem.Repositories
             return Questions;
         }
 
-        internal bool IsAssigned(ExamQuestionDTO examQuestionDTO)
+        internal bool IsAssigned(int examId,int questionId)
         {
-            return _context.ExamQuestions.Any(eq => eq.ExamId == examQuestionDTO.ExamId && eq.QuestionId == examQuestionDTO.QuestionId&&!eq.IsDeleted);
+            return _context.ExamQuestions.Any(eq => eq.ExamId == examId && eq.QuestionId == questionId && !eq.IsDeleted);
         }
 
         public bool RemoveQuestion(int examId, int questionId)

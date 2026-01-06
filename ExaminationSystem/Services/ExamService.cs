@@ -158,9 +158,8 @@ namespace ExaminationSystem.Services
         {
             if (!_examRepository.IsExist(examQuestionDTO.ExamId)) throw new Exception("Exam Not Exsist");
             if (!_examRepository.IsExist(examQuestionDTO.QuestionId)) throw new Exception("Question Not Exsist");
-            if (_examQuestionRepository.IsAssigned(examQuestionDTO))
+            if (_examQuestionRepository.IsAssigned(examQuestionDTO.ExamId, examQuestionDTO.QuestionId))
                 throw new Exception("Question is Assign to Exam");
-            //await _examQuestionRepository.Add(new ExamQuestion { ExamId = examQuestionDTO.ExamId, QuestionId = examQuestionDTO.QuestionId });
             await _examQuestionRepository.Add(_mapper.Map<ExamQuestion>(examQuestionDTO));
         }
         public async Task<ExamEvaluationResultDTO> EvaluateExamforStudent(StudentExamDTO studentExamDTO)

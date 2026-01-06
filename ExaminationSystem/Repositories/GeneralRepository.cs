@@ -3,15 +3,13 @@ using ExaminationSystem.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Linq.Expressions;
-using System.Reflection.Metadata;
-using System.Threading.Tasks;
 
 namespace ExaminationSystem.Repositories
 {
     public class GeneralRepository<T> where T : BaseModel
     {
-        Context _context;
-        DbSet<T> _dbSet; 
+        private readonly Context _context;
+        private readonly DbSet<T> _dbSet; 
         public GeneralRepository()
         {
             _context = new Context();

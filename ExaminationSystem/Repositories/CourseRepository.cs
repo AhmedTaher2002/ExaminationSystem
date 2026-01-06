@@ -1,18 +1,12 @@
 ﻿using ExaminationSystem.Data;
 using ExaminationSystem.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
-using ExaminationSystem.DTOs;
-using System.Runtime.CompilerServices;
-using Microsoft.AspNetCore.HttpOverrides;
-using ExaminationSystem.DTOs.Course;
-using Microsoft.AspNetCore.Mvc;
 
 namespace ExaminationSystem.Repositories
 {
     public class CourseRepository : GeneralRepository<Course>
     {
-        Context _context;
+        private readonly Context _context;
         public CourseRepository()
         {
             _context = new Context();

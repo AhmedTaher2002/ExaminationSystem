@@ -226,7 +226,7 @@ namespace ExaminationSystem.Services
             if (!_questionRepository.IsExist(examQuestionDTO.QuestionId))
                 throw new Exception("Question Not Found");
 
-            if (_examQuestionRepository.IsAssigned(examQuestionDTO))
+            if (_examQuestionRepository.IsAssigned(examQuestionDTO.ExamId, examQuestionDTO.QuestionId))
                 throw new Exception("Question Already Added To Exam");
 
             ExamQuestion examQuestion = new ()
@@ -239,7 +239,7 @@ namespace ExaminationSystem.Services
         }
         public async Task RemoveQuestionFromExam(ExamQuestionDTO examQuestionDTO)
         {
-            if (!_examQuestionRepository.IsAssigned(examQuestionDTO))
+            if (!_examQuestionRepository.IsAssigned(examQuestionDTO.ExamId, examQuestionDTO.QuestionId))
                 throw new Exception("Question Not Assigned To Exam");
 
             await _examQuestionRepository.SoftDelete(examQuestionDTO.ExamId, examQuestionDTO.QuestionId);

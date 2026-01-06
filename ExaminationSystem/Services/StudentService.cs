@@ -15,6 +15,7 @@ namespace ExaminationSystem.Services
         private readonly StudentRepository _studentRepository;
         private readonly StudentCourseRepository _studentCourseRepository ;
         private readonly StudentExamRepository _studentExamRepository;
+        private readonly ExamQuestionRepository _examQuestionRepository;
         private readonly StudentAnswerRepository _studentAnswerRepository;
         private readonly ChoiceRepository _choiceRepository;    
         private readonly CourseRepository _courseRepository;
@@ -28,9 +29,11 @@ namespace ExaminationSystem.Services
             _studentCourseRepository = new StudentCourseRepository();
             _studentExamRepository = new StudentExamRepository();
             _studentAnswerRepository = new StudentAnswerRepository();
+            _examQuestionRepository= new ExamQuestionRepository();
             _choiceRepository = new ChoiceRepository();
             _courseRepository = new CourseRepository();
-            _examRepository = new ExamRepository();
+            _examRepository = new ExamRepository(); 
+
             _mapper = mapper;
         }
 
@@ -155,7 +158,7 @@ namespace ExaminationSystem.Services
         {
             foreach (var answer in answers)
             {
-                await _studentAnswerRepository.Add(new StudentAnswer
+                await _studentAnswerRepository.AddOrUpdate(new StudentAnswer
                 {
                     StudentId = answer.StudentId,
                     ExamId = answer.ExamId,
@@ -165,18 +168,64 @@ namespace ExaminationSystem.Services
             }
         }
 
-        public async Task StartExam(StudentExamDTO studentExamDTO)
+        public async Task StartExam(int studentId, int examId)
         {
-            await _studentExamRepository.StartExam(studentExamDTO.StudentId, studentExamDTO.ExamId);
+            var studentExam = await _studentExamRepository.GetWithTracking(studentId, examId);
+
+            if (studentExam == null)
+                throw new Exception("Student not assigned to this exam");
+
+            if (studentExam.StartedTime != null)
+                throw new Exception("Exam already started");
+
+            if (studentExam.Exam.Type == ExamType.Final && _studentExamRepository.HasFinalExam(studentId))
+                throw new Exception("Student already took final exam");
+
+            studentExam.StartedTime = DateTime.UtcNow;
+            studentExam.IsSubmitted = false;
+
+            await _studentExamRepository.Update(studentExam);
         }
+
         public async Task IsExamTimeExpired(StudentExamDTO studentExamDTO) 
         {
             await _studentExamRepository.IsExamTimeExpired(studentExamDTO.StudentId, studentExamDTO.ExamId);
         }
-        public async Task SubmitExam(StudentExam studentExam, List<StudentAnswer> answers)
-        {
 
+        public async Task SubmitAnswer(StudentAnswerDTO dto)
+        {
+            var studentExam = await _studentExamRepository.GetWithTracking(dto.StudentId, dto.ExamId);
+
+            if (studentExam.IsSubmitted)
+                throw new Exception("Exam already submitted");
+
+            if (studentExam.StartedTime == null)
+                throw new Exception("Exam not started");
+
+            var endTime = studentExam.StartedTime.AddMinutes(studentExam.DurationMinutes);
+
+            if (DateTime.UtcNow > endTime)
+                throw new Exception("Exam time is over");
+
+            if (!_examQuestionRepository.IsAssigned(dto.ExamId, dto.QuestionId))
+                throw new Exception("Question not part of this exam");
+
+            if (!await _choiceRepository.IsChoiceBelongsToQuestion(dto.SelectedChoiceId, dto.QuestionId))
+                throw new Exception("Invalid choice");
+
+            await _studentAnswerRepository.AddOrUpdate(_mapper.Map<StudentAnswer>(dto));
+            
+            /*
+            await _studentAnswerRepository.AddOrUpdate(new StudentAnswer
+            {
+                StudentId = dto.StudentId,
+                ExamId = dto.ExamId,
+                QuestionId = dto.QuestionId,
+                SelectedChoiceId = dto.SelectedChoiceId
+            });
+            */
         }
+
 
         public async Task<List<Course>> GetCoursesForStudent(int studentId)
         {

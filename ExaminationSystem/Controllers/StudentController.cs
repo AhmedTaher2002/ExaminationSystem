@@ -100,5 +100,12 @@ namespace ExaminationSystem.Controllers
             return _mapper.Map<IEnumerable<GetExamsForStudentViewModel>>(_studentService.GetExamsForStudent(studentId));
         }
 
+        [HttpPut]
+        public async Task<bool> StartExam(StudentAnswerViewModel studentAnswerViewModel) 
+        {
+            object start = await _studentService.StartExam(_mapper.Map<StudentAnswerDTO>(studentAnswerViewModel));
+            return true;
+        }
+
     }
 }

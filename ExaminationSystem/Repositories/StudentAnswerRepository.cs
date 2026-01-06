@@ -1,7 +1,6 @@
 ﻿using ExaminationSystem.Data;
 using ExaminationSystem.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 
 namespace ExaminationSystem.Repositories
 {
@@ -31,17 +30,24 @@ namespace ExaminationSystem.Repositories
             return await _context.StudentAnswers.AsTracking().FirstOrDefaultAsync(sa => sa.StudentId == studentId && sa.ExamId == examId&&!sa.IsDeleted);
         }
 
-        
-        public async Task Add(StudentAnswer answer)
-        {   
-            _context.StudentAnswers.Add(answer);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task Update(StudentAnswer answer)
+        public async Task AddOrUpdate(StudentAnswer answer)
         {
-            _context.StudentAnswers.Update(answer);
-            _context.SaveChanges();
+            var existing = await _context.StudentAnswers
+                .FirstOrDefaultAsync(a =>
+                    a.StudentId == answer.StudentId &&
+                    a.ExamId == answer.ExamId &&
+                    a.QuestionId == answer.QuestionId);
+
+            if (existing != null)
+            {
+                existing.SelectedChoiceId = answer.SelectedChoiceId;
+            }
+            else
+            {
+                _context.StudentAnswers.Add(answer);
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public IEnumerable<StudentAnswer> GetAnswersByStudentExam(int studentId,int examId)
@@ -54,12 +60,6 @@ namespace ExaminationSystem.Repositories
         {
             return _context.StudentAnswers.Count(sa => sa.StudentId == studentId&&sa.ExamId==examId && sa.SelectedChoice.IsCorrect);
         }
-
-        internal bool IsAnswered(int studentId, int examId, int questionId)
-        {
-            return _context.StudentAnswers.Any(sa => sa.StudentId==studentId&&sa.ExamId==examId&&sa.QuestionId==questionId);
-        }
-
         
     }
 }

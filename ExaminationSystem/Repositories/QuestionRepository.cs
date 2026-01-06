@@ -5,7 +5,7 @@ namespace ExaminationSystem.Repositories
 {
     public class QuestionRepository:GeneralRepository<Question>
     {
-        Context _context;
+        private readonly Context _context;
         public QuestionRepository()
         {
             _context = new Context();
