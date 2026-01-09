@@ -8,7 +8,6 @@ using ExaminationSystem.Models;
 using ExaminationSystem.Models.Enums;
 using ExaminationSystem.Repositories;
 using ExaminationSystem.ViewModels.Response;
-using ExaminationSystem.ViewModels.Student;
 using Microsoft.EntityFrameworkCore;
 using PredicateExtensions;
 using System.Linq.Expressions;
@@ -212,11 +211,8 @@ namespace ExaminationSystem.Services
             if (!_studentRepository.IsExists(studentId))
                 throw new Exception("Student Not Found");
 
-            var exams = _studentExamRepository.Get(se => se.StudentId == studentId)
-                                             .Include(se => se.Exam)
-                                             .Where(se => !se.Exam.IsDeleted)
-                                             .AsNoTracking()
-                                             .ToList();
+            var exams = _studentExamRepository.Get(se => se.StudentId == studentId).Include(se => se.Exam).Where(se => !se.Exam.IsDeleted)
+                                             .AsNoTracking().ToList();
 
             return _mapper.Map<IEnumerable<GetExamsForStudentDTO>>(exams);
         }

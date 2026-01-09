@@ -12,6 +12,12 @@ namespace ExaminationSystem.Repositories
             _context = new Context();
         }
 
-
+        public IQueryable<Exam> GetExamsByCourse(int courseId)
+        {
+            var exams = _context.Exams
+                .Where(e => e.CourseId == courseId && !e.IsDeleted)
+                .AsQueryable();
+            return exams;
+        }
     }
 }

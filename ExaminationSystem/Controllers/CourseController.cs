@@ -71,14 +71,14 @@ namespace ExaminationSystem.Controllers
             return _mapper.Map<ResponseViewModel<IEnumerable<StudentCourseViewModel>>>(result);
         }
 
-        [HttpPost("{courseId}/assign/instructor/{instructorId}")]
+        [HttpPost("{courseId}/AssignInstructor/{instructorId}")]
         public async Task<ResponseViewModel<bool>> AssignInstructorToCourse(int courseId, int instructorId)
         {
             var result = await _courseService.AssignInstructorToCourse(courseId, instructorId);
             return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpPost("{courseId}/assign/exam/{examId}")]
+        [HttpPost("{courseId}/AssignExam/{examId}")]
         public async Task<ResponseViewModel<bool>> AssignExamToCourse(int courseId, int examId)
         {
             var result = await _courseService.AssignExamToCourse(courseId, examId);

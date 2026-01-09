@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using ExaminationSystem.DTOs.Course;
+using ExaminationSystem.DTOs.Exam;
 using ExaminationSystem.DTOs.Student;
 using ExaminationSystem.Models;
 using ExaminationSystem.Models.Enums;
@@ -140,10 +141,28 @@ namespace ExaminationSystem.Services
         }
 
         // Get all students enrolled in a course
-        public IEnumerable<GetAllStudentsDTO> GetStudents(int courseId)
+        public IEnumerable<GetAllStudentsDTO> GetStudentsInCourse(int courseId)
         {
             var students = _studentCourseRepository.GetStudentsByCourse(courseId);
             return _mapper.Map<List<GetAllStudentsDTO>>(students);
+        }
+
+        // Assign instructor to course
+        public async Task<ResponseViewModel<bool>> AssignInstructorToCourse(int courseId, int instructorId)
+        {
+            // Validate course and instructor
+            if (!_courseRepository.IsExists(courseId))
+                return new FailResponseViewModel<bool>("Course Not Exist", ErrorCode.InvalidCourseId);
+            if (!_instructorRepository.IsExists(instructorId))
+                return new FailResponseViewModel<bool>("Instructor Not Exist", ErrorCode.InvalidInstrutorId);
+
+            var course = await _courseRepository.GetByIDWithTracking(courseId);
+
+            // Assign instructor
+            course.InstructorId = instructorId;
+            await _courseRepository.UpdateAsync(course);
+            return new SuccessResponseViewModel<bool>(true);
+
         }
 
         // Assign exam to course
@@ -167,6 +186,22 @@ namespace ExaminationSystem.Services
 
             return new SuccessResponseViewModel<bool>(true);
         }
+
+        public async Task<ResponseViewModel<IEnumerable<GetAllExamsDTO>>> GetExamsForCourse(int courseId)
+        {
+            // Validate course
+            if (!_courseRepository.IsExists(courseId))
+                return new FailResponseViewModel<IEnumerable<GetAllExamsDTO>>("Course Not Exist", ErrorCode.InvalidCourseId);
+            
+            var exams = _examRepository.GetExamsByCourse(courseId);
+            var result = await exams.ProjectTo<GetAllExamsDTO>(_mapper.ConfigurationProvider).ToListAsync();
+            
+            return (result != null)
+                ? new SuccessResponseViewModel<IEnumerable<GetAllExamsDTO>>(result)
+                : new FailResponseViewModel<IEnumerable<GetAllExamsDTO>>("No Exams Found for the provided course", ErrorCode.ExamNotFound);
+
+        }
+
 
         // Soft delete all exams under a course
         public async Task<ResponseViewModel<bool>> SoftDeleteAllExamsFromCourse(int courseID)

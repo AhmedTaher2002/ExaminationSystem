@@ -102,12 +102,10 @@ namespace ExaminationSystem.Controllers
         }
 
         [HttpGet("{studentId}/exams")]
-        public ActionResult<IEnumerable<GetExamsForStudentViewModel>> GetExamsForStudent(int studentId)
+        public async Task<ResponseViewModel<IEnumerable<GetExamsForStudentViewModel>>> GetExamsForStudent(int studentId)
         {
             var result = _studentService.GetExamsForStudent(studentId);
-            return _mapper.Map<IEnumerable<GetExamsForStudentViewModel>>(result).Any()
-                ? Ok(result)
-                : NotFound("No exams found");
+            return  _mapper.Map<ResponseViewModel<IEnumerable<GetExamsForStudentViewModel>>>(result);
         }
     }
 }
