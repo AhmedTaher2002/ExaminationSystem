@@ -1,4 +1,5 @@
 ﻿using ExaminationSystem.Data;
+using ExaminationSystem.DTOs.Choice;
 using ExaminationSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,11 @@ namespace ExaminationSystem.Repositories
         internal async Task<bool> IsChoiceBelongsToQuestion(int choiceId, int questionId)
         {
             return await _context.Choices.AnyAsync(c=>c.ID ==choiceId && c.QuestionId==questionId);           
+        }
+
+        internal bool IsExists(string text,int questionId)
+        {
+            return _context.Choices.Any(c => c.Text ==text && c.QuestionId == questionId);
         }
     }
 }

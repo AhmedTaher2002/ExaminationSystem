@@ -21,9 +21,9 @@ namespace ExaminationSystem.Repositories
             var res =  _dbSet.Where(x => !x.IsDeleted);
             return res;
         }
-        public async Task<T> GetByID(int id)
+        public IQueryable<T> GetByID(int id)
         {
-            var res = await _dbSet.Where(c => c.ID == id).FirstOrDefaultAsync();
+            var res = _dbSet.Where(c => c.ID == id);
             return res;
         }
         public IQueryable<T> Get(Expression<Func<T,bool>> expression)
@@ -37,17 +37,17 @@ namespace ExaminationSystem.Repositories
             var res = await _dbSet.AsTracking().Where(c => c.ID == id).FirstOrDefaultAsync();
             return res;
         }
-        public async Task Add(T entity)
+        public async Task AddAsync(T entity)
         {
             _dbSet.Add(entity);
             await _context.SaveChangesAsync();
         }
-        public async Task Update(T entity)
+        public async Task UpdateAsync(T entity)
         {
             _context.Update(entity);
             await _context.SaveChangesAsync();
         }
-        public async Task SoftDelete(int id)
+        public async Task SoftDeleteAsync(int id)
         {
             var res = await GetByIDWithTracking(id);
             if (res == null)
@@ -115,7 +115,7 @@ namespace ExaminationSystem.Repositories
             var res = await _dbSet.Where(e => e.ID == id && e.IsDeleted).FirstOrDefaultAsync();
             return res;
         }
-        public bool IsExist(int id)
+        public bool IsExists(int id)
         {
             var res = _dbSet.Any(e => e.ID == id && !e.IsDeleted);
             return res;

@@ -1,6 +1,6 @@
 ﻿using ExaminationSystem.Models.Enums;
 
-namespace ExaminationSystem.ViewModels.ResponseViewModel
+namespace ExaminationSystem.ViewModels.Response
 {
     public class SuccessResponseViewModel<T>:ResponseViewModel<T>
     {

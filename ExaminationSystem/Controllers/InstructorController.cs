@@ -1,161 +1,133 @@
 ﻿using AutoMapper;
-using ExaminationSystem.DTOs.Course;
 using ExaminationSystem.DTOs.Instructor;
 using ExaminationSystem.DTOs.Other;
-using ExaminationSystem.DTOs.Question;
-using ExaminationSystem.DTOs.Student;
 using ExaminationSystem.Services;
 using ExaminationSystem.ViewModels.Course;
 using ExaminationSystem.ViewModels.Instructor;
 using ExaminationSystem.ViewModels.Other;
 using ExaminationSystem.ViewModels.Question;
+using ExaminationSystem.ViewModels.Response;
 using ExaminationSystem.ViewModels.Student;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
 namespace ExaminationSystem.Controllers
 {
-    [Route("[controller]/[action]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class InstructorController : ControllerBase
     {
         private readonly InstructorService _instructorService;
         private readonly IMapper _mapper;
-        public InstructorController(IMapper mapper)
+
+        public InstructorController(InstructorService instructorService, IMapper mapper)
         {
-            _instructorService = new InstructorService(mapper);
+            _instructorService = instructorService;
             _mapper = mapper;
         }
 
         [HttpGet]
-        public IEnumerable<GetAllInstructorsViewModel> GetAll()
+        public async Task<ResponseViewModel<IEnumerable<GetAllInstructorsViewModel>>> GetAll()
         {
-            return _mapper.Map<IEnumerable<GetAllInstructorsViewModel>>(_instructorService.GetAll());
-            /*
-            return _instructorService.GetAll()
-                .Select(i => new GetAllInstructorsViewModel
-                {
-                    ID = i.ID,
-                    Name = i.Name,
-                    Email = i.Email
-                });
-            */
+            var result = await _instructorService.GetAll();
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllInstructorsViewModel>>>(result);
         }
 
-        [HttpGet]
-        public IEnumerable<GetAllInstructorsViewModel> Get(int? id, string? name, string? email)
+        [HttpGet("{id}")]
+        public async Task<ResponseViewModel<GetInstructorByIdViewModel>> GetByID(int id)
         {
-            return _mapper.Map<IEnumerable<GetAllInstructorsViewModel>>(_instructorService.Get(id, name, email));
+            var result = await _instructorService.GetByID(id);
+            return _mapper.Map<ResponseViewModel<GetInstructorByIdViewModel>>(result);
         }
-        
-        [HttpGet]
-        public async Task<GetInstructorByIdViewModel> GetByID(int id)
+
+        [HttpGet("filter")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllInstructorsViewModel>>> Get(int? id, string? name, string? username, string? email)
         {
-            var Instructor= _mapper.Map<GetInstructorByIdViewModel>(_instructorService.GetByID(id));
-            return Instructor;
-            /*
-            var dto = await _instructorService.GetByID(id);
-            return new GetInstructorByIdViewModel
-            {
-                ID = dto.ID,
-                Name = dto.Name,
-                Email = dto.Email
-            };
-            */
+            var result = await _instructorService.Get(id, name, username, email);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllInstructorsViewModel>>>(result);
         }
 
         [HttpPost]
-        public async Task<bool> Create(CreateInstructorViewModel vm)
+        public async Task<ResponseViewModel<bool>> Create([FromBody] CreateInstructorDTO dto)
         {
-            var res = _mapper.Map<CreateInstructorDTO>(vm);
-            await _instructorService.Create(res);
-            /*
-            _instructorService.Create(new CreateInstructorDTO
-            {
-                Name = vm.Name,
-                Email = vm.Email
-            });
-            */
-            return true;
+            var result = await _instructorService.Create(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
         [HttpPut("{id}")]
-        public async Task<bool> Update(int id, UpdateInstructorViewModel vm)
+        public async Task<ResponseViewModel<bool>> Update(int id, [FromBody] UpdateInstructorDTO dto)
         {
-            await _instructorService.Update(id, _mapper.Map<UpdateInstructorDTO>(vm));
-            /*
-            _instructorService.Update(id, new UpdateInstructorDTO
-            {
-                Name = vm.Name,
-                Email = vm.Email
-            });
-            */
-            return true;
+            var result = await _instructorService.Update(id, dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
         [HttpDelete("{id}")]
-        public async Task<bool> SoftDelete(int id)
+        public async Task<ResponseViewModel<bool>> SoftDelete(int id)
         {
-            await _instructorService.SoftDelete(id);
-            return true;
+            var result = await _instructorService.SoftDelete(id);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpGet]
-        public IEnumerable<GetAllCoursesViewModel> GeTCoursesForInstructor(int instructorId)
+        [HttpGet("{instructorId}/courses")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllCoursesViewModel>>> GetCoursesForInstructor(int instructorId)
         {
-            var courses = _instructorService.GeTCoursesForInstructor(instructorId);
-            return _mapper.Map <IEnumerable<GetAllCoursesViewModel>>(courses);
-        }
-        
-        [HttpGet]
-        public IEnumerable<GetAllStudentsViewModel> GetStudentsInCourse(int courseId)
-        {
-            return _mapper.Map<IEnumerable<GetAllStudentsViewModel>>(_instructorService.GetStudentsInCourse(courseId));
-        }
-        
-        [HttpGet]
-        public IEnumerable<GetAllQuestionsViewModel> GetQuestionsForInstructor(int instructorId)
-        {
-            var questionDto=_instructorService.GetQuestionsForInstructor(instructorId);
-            return _mapper.Map<IEnumerable<GetAllQuestionsViewModel>>(questionDto);
-        }
-        
-        [HttpGet]
-        public IEnumerable<GetAllQuestionsViewModel> GetQuestionsByExam(int examId)
-        {
-            return _mapper.Map<IEnumerable<GetAllQuestionsViewModel>>(_instructorService.GetQuestionsByExam(examId));
+            var result = await _instructorService.GeTCoursesForInstructor(instructorId);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllCoursesViewModel>>>(result);
         }
 
-        [HttpGet]
-        public IEnumerable<GetStudentAnswersViewModel> GetStudentAnswers(StudentExamViewModel studentExamViewModel)
+        [HttpGet("course/{courseId}/students")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllStudentsViewModel>>> GetStudentsInCourse(int courseId)
         {
-            return _mapper.Map<IEnumerable<GetStudentAnswersViewModel>>(_instructorService.GetStudentAnswers(_mapper.Map<StudentExamDTO>(studentExamViewModel)));
-        }
-        
-        [HttpPost]
-        public async Task<bool> AssignStudentToCourse(StudentCourseDTO studentCourseDTO)
-        {
-            await _instructorService.AssignStudentToCourse(studentCourseDTO);
-            return true;
+            var result = await _instructorService.GetStudentsInCourse(courseId);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllStudentsViewModel>>>(result);
         }
 
-        [HttpPost]
-        public async Task<bool> AssignExamToCourse(CourseExamViewModel courseExamViewModel)
+        [HttpGet("{instructorId}/questions")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>> GetQuestionsForInstructor(int instructorId)
         {
-            await _instructorService.AssignExamToCourse(_mapper.Map<CourseExamDTO>(courseExamViewModel));
-            return true;    
+            var result = await _instructorService.GetQuestionsForInstructor(instructorId);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>>(result);
         }
 
-        [HttpPost]
-        public async Task AddQuestionToExam(ExamQuestionViewModel examQuestionViewModel)
+        [HttpGet("exam/{examId}/questions")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>> GetQuestionsByExam(int examId)
         {
-            await _instructorService.AddQuestionToExam(_mapper.Map<ExamQuestionDTO>(examQuestionViewModel)); 
-        }
-        
-        [HttpPost]
-        public async Task RemoveQuestionFromExam(ExamQuestionViewModel examQuestionViewModel)
-        {
-            await _instructorService.RemoveQuestionFromExam(_mapper.Map<ExamQuestionDTO>(examQuestionViewModel));
+            var result = await _instructorService.GetQuestionsByExam(examId);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>>(result);
         }
 
+        [HttpGet("student/answers")]
+        public async Task<ResponseViewModel<IEnumerable<GetStudentAnswersViewModel>>> GetStudentAnswers([FromBody] StudentExamDTO dto)
+        {
+            var result = await _instructorService.GetStudentAnswers(dto);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetStudentAnswersViewModel>>>(result);
+        }
+
+        [HttpPost("assign/student")]
+        public async Task<ResponseViewModel<bool>> AssignStudentToCourse([FromBody] StudentCourseDTO dto)
+        {
+            var result = await _instructorService.AssignStudentToCourse(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
+        }
+
+        [HttpPost("assign/exam")]
+        public async Task<ResponseViewModel<bool>> AssignExamToCourse([FromBody] CourseExamDTO dto)
+        {
+            var result = await _instructorService.AssignExamToCourse(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
+        }
+
+        [HttpPost("assign/question")]
+        public async Task<ResponseViewModel<bool>> AddQuestionToExam([FromBody] ExamQuestionDTO dto)
+        {
+            var result = await _instructorService.AddQuestionToExam(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
+        }
+
+        [HttpDelete("remove/question")]
+        public async Task<ResponseViewModel<bool>> RemoveQuestionFromExam([FromBody] ExamQuestionDTO dto)
+        {
+            var result = await _instructorService.RemoveQuestionFromExam(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
+        }
     }
 }

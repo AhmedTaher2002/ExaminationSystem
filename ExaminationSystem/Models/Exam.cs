@@ -22,5 +22,7 @@ namespace ExaminationSystem.Models
 
         public ICollection<ExamQuestion> ExamQuestions { get; set; } = new List<ExamQuestion>();
         public ICollection<StudentExam> StudentExams { get; set; } = new List<StudentExam>();
+        public int DurationMinutes { get; set; } // exam time
+
     }
 } 

@@ -57,7 +57,7 @@ namespace ExaminationSystem.Repositories
 
         public IEnumerable<ExamQuestion> GetQuestionsByExam(int examId)
         {
-            var Questions= _context.ExamQuestions.AsNoTracking().Where(eq=>eq.ExamId==examId).ToList();
+            var Questions= _context.ExamQuestions.AsTracking().Where(eq=>eq.ExamId==examId).ToList();
             return Questions;
         }
 
@@ -78,12 +78,12 @@ namespace ExaminationSystem.Repositories
             return true;
         }
 
-        public void RemoveAllQuestionsFromExam(int examId)
+        public async Task RemoveAllQuestionsFromExam(int examId)
         {
             var questions = _context.ExamQuestions.Where(eq => eq.ExamId == examId);
 
             _context.ExamQuestions.RemoveRange(questions);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
     }
 }

@@ -10,5 +10,10 @@ namespace ExaminationSystem.Repositories
         {
             _context = new Context();
         }
+
+        internal bool IsExists(string email)
+        {
+            return _context.Students.Any(s => s.Email == email);
+        }
     }
 }

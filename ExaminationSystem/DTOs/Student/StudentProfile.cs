@@ -15,9 +15,13 @@ namespace ExaminationSystem.DTOs.Student
                 .ForMember(d => d.Name, o => o.MapFrom(s => s.FullName));
             
             CreateMap<CreateStudentDTO, Models.Student>()
-                .ForMember(d => d.FullName, o => o.MapFrom(s => s.Name));
+                .ForMember(d => d.FullName, o => o.MapFrom(s => s.Name))
+                .ForMember(d => d.Username, o => o.MapFrom(s => s.Username));
+
             CreateMap<UpdateStudentDTO, Models.Student>()
-                .ForMember(d => d.FullName, o => o.MapFrom(s => s.Name));
+                .ForMember(d => d.FullName, o => o.MapFrom(s => s.Name))
+                .ForMember(d => d.Username, o => o.MapFrom(s => s.Username));
+
 
             //Controller
             CreateMap<GetAllStudentsDTO, GetAllStudentsViewModel>();

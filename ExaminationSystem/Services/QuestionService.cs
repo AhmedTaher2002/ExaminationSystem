@@ -1,134 +1,156 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using ExaminationSystem.DTOs.Instructor;
 using ExaminationSystem.DTOs.Question;
 using ExaminationSystem.Models;
 using ExaminationSystem.Models.Enums;
 using ExaminationSystem.Repositories;
+using ExaminationSystem.ViewModels.Response;
 using Microsoft.EntityFrameworkCore;
+using PredicateExtensions;
+using System.Linq.Expressions;
 
 namespace ExaminationSystem.Services
 {
     public class QuestionService
     {
         private readonly QuestionRepository _questionRepository;
+        private readonly InstructorRepository _instructorRepository;
         private readonly IMapper _mapper;
-        public QuestionService(IMapper  mapper)
+
+        public QuestionService(IMapper mapper)
         {
             _questionRepository = new QuestionRepository();
+            _instructorRepository = new InstructorRepository();
             _mapper = mapper;
         }
 
-        public List<GetAllQuestionsDTO> GetAll()
-        {
-            var questions = _questionRepository.GetAll().AsNoTracking().ToList();
-            return _mapper.Map<List<GetAllQuestionsDTO>>(questions);
-            /*
-            return _questionRepository.GetAll()
-                .Select(q => new GetAllQuestionsDTO
-                {
-                    ID = q.ID,
-                    Text = q.Text,
-                    Level = q.Level
-                }).AsNoTracking().ToList();*/
+        #region Question CRUD
 
-        }
-        public async Task<GetQuestionByIdDTO> GetByID(int id)
+        // Get all questions
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsDTO>>> GetAll()
         {
-            if (!_questionRepository.IsExist(id))
-                throw new Exception("Question Not Found");
+            var questions = _questionRepository.GetAll();
+            var result = await questions.ProjectTo<GetAllQuestionsDTO>(_mapper.ConfigurationProvider).ToListAsync();
 
-            var question = await _questionRepository.Get(q => q.ID == id).Include(q => q.Choices).FirstAsync();
-            return _mapper.Map<GetQuestionByIdDTO>(question);
-            /*
-            return new GetQuestionByIdDTO
-            {
-                ID = question.ID,
-                Text = question.Text,
-                Level = question.Level
-            };*/
+            return result != null
+                ? new SuccessResponseViewModel<IEnumerable<GetAllQuestionsDTO>>(result)
+                : new FailResponseViewModel<IEnumerable<GetAllQuestionsDTO>>("No Questions Found", ErrorCode.QuestionNotFound);
         }
-        public async Task<GetAllQuestionsDTO> Get(int? id, string? text, QuestionLevel? level)
+
+        // Get question by ID
+        public async Task<ResponseViewModel<GetQuestionByIdDTO>> GetByID(int id)
         {
-            var query = _questionRepository.GetAll().AsQueryable();
-            if (id.HasValue)
-            {
-                query = query.Where(q => q.ID == id.Value);
-            }
-            if (!string.IsNullOrEmpty(text))
-            {
-                query = query.Where(q => q.Text.Contains(text));
-            }
-            if (level.HasValue)
-            {
-                query = query.Where(q => q.Level == level.Value);
-            }
-            var question = await query.AsNoTracking().FirstOrDefaultAsync()??throw new Exception("Question Not Found");
-            return _mapper.Map<GetAllQuestionsDTO>(question);
-            /*
-            return new GetAllQuestionsDTO
-            {
-                ID = question.ID,
-                Text = question.Text,
-                Level = question.Level
-            };
-            */
+            if (!_questionRepository.IsExists(id))
+                return new FailResponseViewModel<GetQuestionByIdDTO>("QuestionId Not Found", ErrorCode.InvalidQuestionId);
+
+            var question = _questionRepository.Get(q => q.ID == id).Include(q => q.Choices);
+            var result = await question.ProjectTo<GetQuestionByIdDTO>(_mapper.ConfigurationProvider).FirstOrDefaultAsync();
+
+            return result != null
+                ? new SuccessResponseViewModel<GetQuestionByIdDTO>(result)
+                : new FailResponseViewModel<GetQuestionByIdDTO>("Question Not Exist", ErrorCode.QuestionNotFound);
         }
-        public async Task Create(CreateQuestionDTO dto)
+
+        // Filter questions dynamically
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsDTO>>> Get(int? id, string? text, QuestionLevel? level)
         {
-            /*
-            Question question = new Question
-            {
-                Text = dto.Text,
-                Level = dto.Level,
-                InstructorId = dto.InstructorId
-            };
-            */
+            var predicate = QuestionPredicateBuilder(id, text, level);
+            var questions = _questionRepository.Get(predicate);
+            var result = await questions.ProjectTo<GetAllQuestionsDTO>(_mapper.ConfigurationProvider).ToListAsync();
+
+            return result != null
+                ? new SuccessResponseViewModel<IEnumerable<GetAllQuestionsDTO>>(result)
+                : new FailResponseViewModel<IEnumerable<GetAllQuestionsDTO>>("No Questions Found", ErrorCode.QuestionNotFound);
+        }
+
+        // Create a new question
+        public async Task<ResponseViewModel<bool>> Create(CreateQuestionDTO dto)
+        {
             var question = _mapper.Map<Question>(dto);
-            await _questionRepository.Add(question);
+            await _questionRepository.AddAsync(question);
+
+            return question != null
+                ? new SuccessResponseViewModel<bool>(true)
+                : new FailResponseViewModel<bool>("Question not created", ErrorCode.ChoiceNotCreated);
         }
-        public async Task Update(int id, UpdateQuestionDTO questionDto)
+
+        // Update an existing question
+        public async Task<ResponseViewModel<bool>> Update(int id, UpdateQuestionDTO dto)
         {
-            if (!_questionRepository.IsExist(id))
-                throw new Exception("Question Not Found");
-            /*
-            Question question = new Question
-            {
-                ID = id,
-                Text = dto.Text,
-                Level = dto.Level
-            };
-            */
+            if (!_questionRepository.IsExists(id))
+                return new FailResponseViewModel<bool>("QuestionId Not Found", ErrorCode.InvalidQuestionId);
+
             var question = await _questionRepository.GetByIDWithTracking(id);
-            questionDto = new()
+            dto = new UpdateQuestionDTO
             {
-                Level=questionDto.Level==default?question.Level:questionDto.Level,
-                Text=questionDto.Text=="string"?question.Text:questionDto.Text
+                QuestionId = question.ID,
+                Text = dto.Text == "string" ? question.Text : dto.Text,
+                Level = dto.Level == default ? question.Level : dto.Level
             };
-            await _questionRepository.Update(_mapper.Map<Question>(questionDto));
-        }
-        public async Task<bool> SoftDelete(int questionId)
-        {
-            if (!_questionRepository.IsExist(questionId))
-                throw new Exception("Question Not Found");
 
-            await _questionRepository.SoftDelete(questionId);
-            return true;
-        }
-        public async Task<bool>HardDelete(int questionId)
-        {
-            if (!_questionRepository.IsExist(questionId))
-                throw new Exception("Question Not Found");
+            await _questionRepository.UpdateAsync(_mapper.Map<Question>(dto));
 
-            await _questionRepository.HardDelete(questionId);
-            return true;
+            return question != null
+                ? new SuccessResponseViewModel<bool>(true)
+                : new FailResponseViewModel<bool>("Question not Updated", ErrorCode.QuestionNotUpdated);
         }
-        public IEnumerable<GetAllQuestionsDTO> GetInstructorQuestions(int instructorId)
+
+        // Soft delete a question
+        public async Task<ResponseViewModel<bool>> SoftDelete(int questionId)
         {
-            var questions = _questionRepository.Get(q => q.InstructorId == instructorId).ToList();
-            return _mapper.Map<IEnumerable<GetAllQuestionsDTO>>(questions);
+            if (!_questionRepository.IsExists(questionId))
+                return new FailResponseViewModel<bool>("QuestionId Not Found", ErrorCode.InvalidQuestionId);
+
+            await _questionRepository.SoftDeleteAsync(questionId);
+            return new SuccessResponseViewModel<bool>(true);
         }
-        public IEnumerable<GetAllQuestionsDTO> GetByLevel(QuestionLevel level)
-        { 
-            return _mapper.Map<IEnumerable<GetAllQuestionsDTO>>(_questionRepository.Get(q => q.Level == level)); 
+
+        #endregion
+
+        #region Instructor Questions
+
+        // Get all questions created by an instructor
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsDTO>>> GetInstructorQuestions(int instructorId)
+        {
+            if (!_instructorRepository.IsExists(instructorId))
+                return new FailResponseViewModel<IEnumerable<GetAllQuestionsDTO>>("InstructorId Not Exist", ErrorCode.InvalidInstrutorId);
+
+            var questions = _questionRepository.Get(q => q.InstructorId == instructorId);
+            var result = await questions.ProjectTo<GetAllQuestionsDTO>(_mapper.ConfigurationProvider).ToListAsync();
+
+            return result != null
+                ? new SuccessResponseViewModel<IEnumerable<GetAllQuestionsDTO>>(result)
+                : new FailResponseViewModel<IEnumerable<GetAllQuestionsDTO>>("No Questions Found", ErrorCode.QuestionNotFound);
         }
+
+        // Get questions by difficulty level
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsDTO>>> GetByLevel(QuestionLevel level)
+        {
+            var questions = _questionRepository.Get(q => q.Level == level);
+            var result = await questions.ProjectTo<GetAllQuestionsDTO>(_mapper.ConfigurationProvider).ToListAsync();
+
+            return result != null
+                ? new SuccessResponseViewModel<IEnumerable<GetAllQuestionsDTO>>(result)
+                : new FailResponseViewModel<IEnumerable<GetAllQuestionsDTO>>("No Questions Found", ErrorCode.QuestionNotFound);
+        }
+
+        #endregion
+
+        #region Private Helpers
+
+        // Dynamic predicate for filtering questions
+        private Expression<Func<Question, bool>> QuestionPredicateBuilder(int? id, string? text, QuestionLevel? level)
+        {
+            var predicate = PredicateExtensions.PredicateExtensions.Begin<Question>(true);
+
+            if (id.HasValue) predicate = predicate.And(q => q.ID == id.Value);
+            if (!string.IsNullOrEmpty(text)) predicate = predicate.And(q => q.Text.Contains(text));
+            if (level.HasValue) predicate = predicate.And(q => q.Level == level.Value);
+
+            return predicate;
+        }
+
+        #endregion
     }
 }

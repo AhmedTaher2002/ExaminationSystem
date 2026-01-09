@@ -1,7 +1,7 @@
 ﻿using ExaminationSystem.Models.Enums;
 using System.Runtime.CompilerServices;
 
-namespace ExaminationSystem.ViewModels.ResponseViewModel
+namespace ExaminationSystem.ViewModels.Response
 {
     public class ResponseViewModel<T>
     {

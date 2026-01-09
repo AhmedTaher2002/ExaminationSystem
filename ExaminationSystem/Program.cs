@@ -1,4 +1,6 @@
 
+using System.Security;
+
 namespace ExaminationSystem
 {
     public class Program
@@ -21,6 +23,23 @@ namespace ExaminationSystem
             builder.Services.AddAutoMapper(typeof(ExaminationSystem.DTOs.Student.StudentProfile).Assembly);
             builder.Services.AddScoped<ExaminationSystem.Filters.GlobalErrorHandlerMiddleware>();
             builder.Services.AddScoped<ExaminationSystem.Filters.TransactionMiddleware>();
+            
+            builder.Services.AddAuthentication(opt=>opt.DefaultAuthenticateScheme =
+                Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme    )
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                        ValidAudience = builder.Configuration["Jwt:Audience"],
+                        IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+                    };
+                });
+            
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

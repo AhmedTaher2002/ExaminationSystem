@@ -1,151 +1,113 @@
 ﻿using AutoMapper;
-using ExaminationSystem.DTOs.Exam;
 using ExaminationSystem.DTOs.Other;
 using ExaminationSystem.DTOs.Student;
-using ExaminationSystem.Models;
-using ExaminationSystem.Models.Enums;
 using ExaminationSystem.Services;
+using ExaminationSystem.ViewModels.Course;
 using ExaminationSystem.ViewModels.Exam;
 using ExaminationSystem.ViewModels.Other;
-using ExaminationSystem.ViewModels.ResponseViewModel;
+using ExaminationSystem.ViewModels.Response;
 using ExaminationSystem.ViewModels.Student;
 using Microsoft.AspNetCore.Mvc;
+
 namespace ExaminationSystem.Controllers
 {
-    [Route("[controller]/[action]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class StudentController : ControllerBase
     {
         private readonly StudentService _studentService;
         private readonly IMapper _mapper;
 
-        public StudentController(IMapper mapper)
+        public StudentController(StudentService studentService, IMapper mapper)
         {
-            _studentService = new StudentService(mapper);
+            _studentService = studentService;
             _mapper = mapper;
         }
 
-
         [HttpGet]
-        public ResponseViewModel<IEnumerable<GetAllStudentsViewModel>> GetAll()
+        public async Task<ResponseViewModel<IEnumerable<GetAllStudentsViewModel>>> GetAll()
         {
-
-            var res=  _mapper.Map<IEnumerable<GetAllStudentsViewModel>>( _studentService.GetAll());
-            /*
-            return new ResponseViewModel<IEnumerable<GetAllStudentsViewModel>>() 
-            { 
-                Data = res ,
-                IsError=ErrorCode.NoError,
-                IsSuccess=true,
-                Massage=""
-            };
-            */
-            return new SuccessResponseViewModel<IEnumerable<GetAllStudentsViewModel>>(res)  ;
-            /*
-            return _studentService.GetAll()
-                .Select(s => new GetAllStudentsViewModel
-                {
-                    ID = s.ID,
-                    Name = s.Name,
-                    Email = s.Email
-                });
-            */
-
+            var result = await _studentService.GetAll();
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllStudentsViewModel>>>(result);
         }
 
-        [HttpGet]
+        [HttpGet("{id}")]
         public async Task<ResponseViewModel<GetStudentByIdViewModel>> GetByID(int id)
         {
-            var res = _mapper.Map<GetStudentByIdViewModel>(await _studentService.GetByID(id));
-            return new SuccessResponseViewModel<GetStudentByIdViewModel>(res);
-            /*return new ResponseViewModel<GetStudentByIdViewModel>()
-            {
-                Data = res,
-                IsError = ErrorCode.NoError,
-                IsSuccess = true,
-                Massage = ""
-            };*/
+            var result = await _studentService.GetByID(id);
+            return _mapper.Map<ResponseViewModel<GetStudentByIdViewModel>>(result);
         }
 
-        
-        [HttpPost]
-        public async Task<bool> Create(CreateStudentViewModel createStudentViewModel)
+        [HttpGet("filter")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllStudentsViewModel>>> Get(int? id, string? name, string? email)
         {
-            /*
-            await _studentService.Create(new CreateStudentDTO
-            {
-                Name = vm.Name,
-                Email = vm.Email
-            });
-            */
-            await _studentService.Create(_mapper.Map<CreateStudentDTO>(createStudentViewModel));
-            return true;
-        }
-
-        [HttpPut]
-        public async Task<bool> Update(UpdateStudentViewModel vm)
-        {
-            var dto = _mapper.Map<UpdateStudentDTO>(vm);
-            await _studentService.Update(dto);
-            return true;
-        }
-
-        [HttpDelete]
-        public async Task<bool> SoftDelete(int id)
-        {
-            await _studentService.SoftDelete(id);
-            return true;
-        }
-
-        [HttpDelete]
-        public async Task<bool> HardDelete(int id)
-        {
-            await _studentService.HardDelete(id);
-            return true;
+            var result = await _studentService.Get(id, name, email);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllStudentsViewModel>>>(result);
         }
 
         [HttpPost]
-        public async Task HardDeleteStudentFromCourse(StudentCourseViewModel studentCourseVM)
+        public async Task<ResponseViewModel<bool>> Create([FromBody] CreateStudentDTO dto)
         {
-            await _studentService.HardDeleteStudentFromCourse(_mapper.Map<StudentCourseDTO>(studentCourseVM));
-        }
-        [HttpPost]
-        public async Task SoftDeleteStudentFromCourse(StudentCourseViewModel studentCourseVM)
-        {
-            await _studentService.SoftDeleteStudentFromCourse(_mapper.Map<StudentCourseDTO>(studentCourseVM));
+            var result = await _studentService.Create(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpGet]
-        public IEnumerable<GetExamsForStudentViewModel> GetExamsForStudent(int studentId)
+        [HttpPut("{id}")]
+        public async Task<ResponseViewModel<bool>> Update(int id, [FromBody] UpdateStudentDTO dto)
         {
-            return _mapper.Map<IEnumerable<GetExamsForStudentViewModel>>(_studentService.GetExamsForStudent(studentId));
+            var result = await _studentService.Update(id, dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpPut]
-        public async Task<bool> StartExam(StudentExamViewModel studentExamViewModel) 
+        [HttpDelete("{id}")]
+        public async Task<ResponseViewModel<bool>> SoftDelete(int id)
         {
-            await _studentService.StartExam(_mapper.Map<StudentExamDTO>(studentExamViewModel));
-            return true;
+            var result = await _studentService.SoftDelete(id);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpPut]
-        public async Task<bool> SubmitAnswer(StudentAnswerViewModel studentAnswerViewModel) 
+        [HttpPost("enroll")]
+        public async Task<ResponseViewModel<bool>> EnrollInCourse([FromBody] StudentCourseDTO dto)
         {
-            await _studentService.SubmitAnswer(_mapper.Map<StudentAnswerDTO>(studentAnswerViewModel));
-            return true;    
+            var result = await _studentService.EnrollInCourse(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpPut]
-        public async Task<bool> SubmitAnswers(List<StudentAnswerViewModel> studentAnswerViewModels)
+        [HttpPost("exam/start")]
+        public async Task<ResponseViewModel<bool>> StartExam([FromBody] StudentExamDTO dto)
         {
-            await _studentService.SubmitAnswers(_mapper.Map<List<StudentAnswerDTO>>(studentAnswerViewModels))  ;
-            return true;
+            var result = await _studentService.StartExam(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
+        [HttpPost("exam/submit")]
+        public async Task<ResponseViewModel<bool>> SubmitAnswers([FromBody] List<StudentAnswerDTO> answers)
+        {
+            var result = await _studentService.SubmitAnswers(answers);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
+        }
 
+        [HttpGet("{studentId}/courses")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllCoursesViewModel>>> GetCoursesForStudent(int studentId)
+        {
+            var result = await _studentService.GetCoursesForStudent(studentId);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllCoursesViewModel>>>(result);
+        }
 
+        [HttpDelete("course/remove")]
+        public async Task<ResponseViewModel<bool>> SoftDeleteStudentFromCourse([FromBody] StudentCourseDTO dto)
+        {
+            var result = await _studentService.SoftDeleteStudentFromCourse(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
+        }
 
-
-
+        [HttpGet("{studentId}/exams")]
+        public ActionResult<IEnumerable<GetExamsForStudentViewModel>> GetExamsForStudent(int studentId)
+        {
+            var result = _studentService.GetExamsForStudent(studentId);
+            return _mapper.Map<IEnumerable<GetExamsForStudentViewModel>>(result).Any()
+                ? Ok(result)
+                : NotFound("No exams found");
+        }
     }
 }

@@ -111,5 +111,10 @@ namespace ExaminationSystem.Repositories
 
             return DateTime.UtcNow > endTime;
         }
+
+        internal bool IsSubmitted(int studentId, int examId)
+        {
+            return _context.StudentExam.Any(se => se.StudentId == studentId && se.ExamId == examId && se.IsSubmitted&&!se.IsDeleted);
+        }
     }
 }

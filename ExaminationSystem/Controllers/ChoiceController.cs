@@ -1,56 +1,65 @@
 ﻿using AutoMapper;
 using ExaminationSystem.DTOs.Choice;
-using ExaminationSystem.Models;
 using ExaminationSystem.Services;
 using ExaminationSystem.ViewModels.Choice;
+using ExaminationSystem.ViewModels.Response;
 using Microsoft.AspNetCore.Mvc;
+
 namespace ExaminationSystem.Controllers
 {
-    [Route("[controller]/[action]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class ChoiceController : ControllerBase
     {
-        private readonly ChoiceService _service;
+        private readonly ChoiceService _choiceService;
         private readonly IMapper _mapper;
-        public ChoiceController(IMapper mapper)
+
+        public ChoiceController(ChoiceService choiceService, IMapper mapper)
         {
-            _service = new ChoiceService(mapper);
+            _choiceService = choiceService;
             _mapper = mapper;
         }
 
         [HttpGet]
-        public IEnumerable<GetAllChoicesViewModel> GetByQuestion(int questionId)
+        public async Task<ResponseViewModel<IEnumerable<GetAllChoicesViewModel>>> GetAll()
         {
-            var choices = _mapper.Map<IEnumerable<GetAllChoicesViewModel>>(_service.GetChoiceForQuestionID(questionId));
-            return choices;
-            /*
-            return _service.GetByQuestionID(questionId)
-                .Select(c => new GetAllChoicesViewModel
-                {
-                    ID = c.ID,
-                    Text = c.Text,
-                    IsCorrect = c.IsCorrect
-                });
-            */
+            var result = await _choiceService.GetAll();
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllChoicesViewModel>>>(result);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<ResponseViewModel<GetChoiceByIdViewModel>> GetByID(int id)
+        {
+            var result = await _choiceService.GetByID(id);
+            return _mapper.Map<ResponseViewModel<GetChoiceByIdViewModel>>(result);
         }
 
         [HttpPost]
-        public async Task<bool> Create(CreateChoiceViewModel vm)
+        public async Task<ResponseViewModel<bool>> Create([FromBody] CreateChoiceDTO dto)
         {
-            await _service.Create(new CreateChoiceDTO
-            {
-                Text = vm.Text,
-                IsCorrect = vm.IsCorrect,
-                QuestionId = vm.QuestionId
-            });
-            return true;
+            var result = await _choiceService.Create(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpPut]
-        public async Task Update(int id, UpdateChoiceViewModel updateChoiceViewModel)
+        [HttpPut("{id}")]
+        public async Task<ResponseViewModel<bool>> Update(int id, [FromBody] UpdateChoiceDTO dto)
         {
-            await _service.Update(id, _mapper.Map<UpdateChoiceDTO>(updateChoiceViewModel));
+            var result = await _choiceService.Update(id, dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
+        [HttpDelete("{id}")]
+        public async Task<ResponseViewModel<bool>> SoftDelete(int id)
+        {
+            var result = await _choiceService.SoftDelete(id);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
+        }
+
+        [HttpGet("question/{questionId}")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllChoicesViewModel>>> GetChoicesForQuestion(int questionId)
+        {
+            var result = await _choiceService.GetChoiceForQuestionID(questionId);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllChoicesViewModel>>>(result);
+        }
     }
 }

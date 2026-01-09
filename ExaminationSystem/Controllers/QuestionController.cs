@@ -1,91 +1,79 @@
 ﻿using AutoMapper;
 using ExaminationSystem.DTOs.Question;
-using ExaminationSystem.Models.Enums;
 using ExaminationSystem.Services;
 using ExaminationSystem.ViewModels.Question;
+using ExaminationSystem.ViewModels.Response;
 using Microsoft.AspNetCore.Mvc;
+
 namespace ExaminationSystem.Controllers
 {
-    [Route("[controller]/[action]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class QuestionController : ControllerBase
     {
         private readonly QuestionService _questionService;
         private readonly IMapper _mapper;
-        public QuestionController(IMapper mapper)
+
+        public QuestionController(QuestionService questionService, IMapper mapper)
         {
-            _questionService = new QuestionService(mapper);
+            _questionService = questionService;
             _mapper = mapper;
         }
 
         [HttpGet]
-        public IEnumerable<GetAllQuestionsViewModel> GetAll()
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>> GetAll()
         {
-            return _mapper.Map<IEnumerable<GetAllQuestionsViewModel>>(_questionService.GetAll());
-            /*
-             return _questionService.GetAll()
-                .Select(q => new GetAllQuestionsViewModel
-                {
-                    ID = q.ID,
-                    Text = q.Text,
-                    Level = q.Level
-                });
-            */
+            var result = await _questionService.GetAll();
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>>(result);
         }
 
-        [HttpGet]
-        public async Task<GetQuestionByIdViewModel> GetByID(int id)
+        [HttpGet("{id}")]
+        public async Task<ResponseViewModel<GetQuestionByIdViewModel>> GetByID(int id)
         {
-            var dto = await _questionService.GetByID(id);
-            return _mapper.Map<GetQuestionByIdViewModel>(dto);
-            /*
-            return new GetQuestionByIdViewModel
-            {
-                ID = dto.ID,
-                Text = dto.Text,
-                Level = dto.Level
-            };
-            */
+            var result = await _questionService.GetByID(id);
+            return _mapper.Map<ResponseViewModel<GetQuestionByIdViewModel>>(result);
+        }
+
+        [HttpGet("filter")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>> Get(int? id, string? text, int? level)
+        {
+            var result = await _questionService.Get(id, text, (Models.Enums.QuestionLevel?)level);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>>(result);
         }
 
         [HttpPost]
-        public async Task Create(CreateQuestionViewModel vm)
+        public async Task<ResponseViewModel<bool>> Create([FromBody] CreateQuestionDTO dto)
         {
-            var question = _mapper.Map<CreateQuestionDTO>(vm);
-            await _questionService.Create(question);
-            /*
-            await _questionService.Create(new CreateQuestionDTO
-            {
-                Text = vm.Text,
-                Level = vm.Level,
-                InstructorId = vm.InstructorId
-            });
-            */
+            var result = await _questionService.Create(dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpPut]
-        public async Task Update(int id, UpdateQuestionViewModel questionViewModel)
+        [HttpPut("{id}")]
+        public async Task<ResponseViewModel<bool>> Update(int id, [FromBody] UpdateQuestionDTO dto)
         {
-            await _questionService.Update(id, _mapper.Map<UpdateQuestionDTO>(questionViewModel));             
+            var result = await _questionService.Update(id, dto);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpDelete]
-        public async Task<bool> SoftDelete(int id)
+        [HttpDelete("{id}")]
+        public async Task<ResponseViewModel<bool>> SoftDelete(int id)
         {
-            return await _questionService.SoftDelete(id);
-        }
-  
-        [HttpGet]
-        public async Task<IEnumerable<GetAllQuestionsViewModel>> GetInstructorQuestions(int instructorId)
-        {
-            var res = _questionService.GetInstructorQuestions(instructorId);
-            return _mapper.Map<IEnumerable<GetAllQuestionsViewModel>>(res);
+            var result = await _questionService.SoftDelete(id);
+            return _mapper.Map<ResponseViewModel<bool>>(result);
         }
 
-        [HttpGet]
-        public IEnumerable<GetAllQuestionsViewModel> GetByLevel(QuestionLevel level)
+        [HttpGet("instructor/{instructorId}")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>> GetInstructorQuestions(int instructorId)
         {
-            return _mapper.Map<IEnumerable<GetAllQuestionsViewModel>>(_questionService.GetByLevel(level));
+            var result = await _questionService.GetInstructorQuestions(instructorId);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>>(result);
+        }
+
+        [HttpGet("level/{level}")]
+        public async Task<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>> GetByLevel(int level)
+        {
+            var result = await _questionService.GetByLevel((Models.Enums.QuestionLevel)level);
+            return _mapper.Map<ResponseViewModel<IEnumerable<GetAllQuestionsViewModel>>>(result);
         }
     }
 }

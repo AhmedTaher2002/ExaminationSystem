@@ -1,10 +1,14 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using ExaminationSystem.DTOs.Course;
 using ExaminationSystem.DTOs.Student;
 using ExaminationSystem.Models;
+using ExaminationSystem.Models.Enums;
 using ExaminationSystem.Repositories;
+using ExaminationSystem.ViewModels.Response;
 using Microsoft.EntityFrameworkCore;
-using System.Runtime.CompilerServices;
+using PredicateExtensions;
+using System.Linq.Expressions;
 
 namespace ExaminationSystem.Services
 {
@@ -15,7 +19,6 @@ namespace ExaminationSystem.Services
         private readonly InstructorRepository _instructorRepository;
         private readonly StudentCourseRepository _studentCourseRepository;
         private readonly IMapper _mapper;
-
         public CourseService(IMapper mapper)
         {
             _courseRepository = new CourseRepository();
@@ -25,106 +28,87 @@ namespace ExaminationSystem.Services
             _mapper = mapper;
         }
 
-        public IEnumerable<GetAllCoursesDTO> GetAll()
+        // Get all courses with instructor info
+        public async Task<ResponseViewModel<IEnumerable<GetAllCoursesDTO>>> GetAll()
         {
-            /*var res= _courseRepository.GetAll()
-                .Select(course => new GetAllCoursesDTO
-                {
-                    ID = course.ID,
-                    Name = course.Name,
-                    Description = course.Description,
-                    Hours = course.Hours,
-                    Instructor = new GetInstructorInfoDTO
-                    {
-                        ID = course.Instructor.ID,
-                        Name = course.Instructor.FullName
-                    }
-                }).AsNoTracking().ToList();
-            */
-            var courses = _courseRepository.GetAll().Include(i => i.Instructor).AsNoTracking().ToList();
-            var res = _mapper.Map<IEnumerable<GetAllCoursesDTO>>(courses);
-            return res;
+            var courses = _courseRepository.GetAll().Include(i => i.Instructor);
+            var result = await courses.ProjectTo<GetAllCoursesDTO>(_mapper.ConfigurationProvider).ToListAsync();
+
+            // Check if no courses exist
+            if (courses == null)
+                return new FailResponseViewModel<IEnumerable<GetAllCoursesDTO>>("No Courses Found", ErrorCode.CourseNotFound);
+
+            return new SuccessResponseViewModel<IEnumerable<GetAllCoursesDTO>>(result);
         }
 
-        public async Task<GetByIdCourseDTO> GetByID(int id)
+        // Get course details by ID
+        public async Task<ResponseViewModel<GetByIdCourseDTO>> GetByID(int id)
         {
-            if (!_courseRepository.IsExist(id))
-                throw new Exception("Course Not Found");
+            var course = _courseRepository.GetByID(id);
+            var result = await course.ProjectTo<GetByIdCourseDTO>(_mapper.ConfigurationProvider).FirstOrDefaultAsync();
 
-            var course = await _courseRepository.Get(c=>c.ID == id).Include(i=>i.Instructor).AsNoTracking().FirstOrDefaultAsync();
-            return _mapper.Map<GetByIdCourseDTO>(course);
-            /*
-            return new GetByIdCourseDTO
-            {
-                ID = course.ID,
-                Name = course.Name,
-                Description = course.Description,
-                Hours = course.Hours,
-                Instructor = new GetInstructorInfoDTO
-                {
-                    ID = course.Instructor.ID,
-                    Name = course.Instructor.FullName
-                }
-            };*/
+            // Validate course existence
+            if (!_courseRepository.IsExists(id))
+                return new FailResponseViewModel<GetByIdCourseDTO>("Course Id is not Exist", ErrorCode.InvalidCourseId);
+
+            // Handle not found case
+            if (result == null)
+                return new FailResponseViewModel<GetByIdCourseDTO>("Course Not Found", ErrorCode.CourseNotFound);
+
+            return new SuccessResponseViewModel<GetByIdCourseDTO>(result);
         }
 
-        public IEnumerable<GetAllCoursesDTO> Get(int? courseID, string? courseName, int? courseHours)
+        // Get courses using filters
+        public async Task<ResponseViewModel<IEnumerable<GetAllCoursesDTO>>> Get(int? courseID, string? courseName, int? courseHours)
         {
-            var query = _courseRepository.GetAll();
+            // At least one filter must be provided
+            if (courseID == null && courseName == null && courseHours == null)
+                return new FailResponseViewModel<IEnumerable<GetAllCoursesDTO>>("At least one filter must be provided", ErrorCode.InvalidCourseFilter);
 
-            if (courseID.HasValue)
-                query = query.Where(c => c.ID == courseID);
+            // Build dynamic predicate
+            var predicate = CoursePredicateBuilder(courseID, courseName, courseHours);
 
-            if (!string.IsNullOrWhiteSpace(courseName))
-                query = query.Where(c => c.Name.Contains(courseName));
+            // Execute filtered query
+            var courses = _courseRepository.Get(predicate);
+            var result = await courses.ProjectTo<GetAllCoursesDTO>(_mapper.ConfigurationProvider).ToListAsync();
 
-            if (courseHours.HasValue)
-                query = query.Where(c => c.Hours == courseHours);
-            /*
-            return query
-                .Select(course => new GetAllCoursesDTO
-                {
-                    ID = course.ID,
-                    Name = course.Name,
-                    Description = course.Description,
-                    Hours = course.Hours,
-                    Instructor = new GetInstructorInfoDTO
-                    {
-                        ID = course.Instructor.ID,
-                        Name = course.Instructor.FullName
-                    }
-                }).ToList();*/
-            var courses = query.Include(i => i.Instructor).AsNoTracking().ToList();
-            var res = _mapper.Map<IEnumerable<GetAllCoursesDTO>>(courses);
-            return res;
+            return (result != null)
+                ? new SuccessResponseViewModel<IEnumerable<GetAllCoursesDTO>>(result)
+                : new FailResponseViewModel<IEnumerable<GetAllCoursesDTO>>("No Courses Found with the provided filters", ErrorCode.CourseNotFound);
         }
 
-        public async Task Create(CreateCourseDTO courseDTO)
+        // Create new course
+        public async Task<ResponseViewModel<bool>> Create(CreateCourseDTO courseDTO)
         {
-            if (_courseRepository.IsExist(courseDTO.Name).Result)
-                throw new Exception("Course is Exist");
+            // Prevent duplicate course name
+            if (await _courseRepository.IsExist(courseDTO.Name))
+                return new FailResponseViewModel<bool>("Course Not Created", ErrorCode.CourseAreadyExists);
 
-            if (!_instructorRepository.IsExist(courseDTO.InstructorID))
-                throw new Exception("Instructor Not Found");
-            /*
-            var course = new Course
-            {
-                Name = courseDTO.Name,
-                Description = courseDTO.Description,
-                Hours = courseDTO.Hours,
-                InstructorId = courseDTO.InstructorID
-            };
-            */
+            // Validate instructor
+            if (!_instructorRepository.IsExists(courseDTO.InstructorID))
+                return new FailResponseViewModel<bool>("InstructorID Not Exist", ErrorCode.InvalidInstrutorId);
+
+            // Validate input
+            if (courseDTO == null)
+                return new FailResponseViewModel<bool>("Course Not Created", ErrorCode.CourseNotCreated);
+
             var course = _mapper.Map<Course>(courseDTO);
-            await _courseRepository.Add(course);
+            await _courseRepository.AddAsync(course);
+
+            return new SuccessResponseViewModel<bool>(true);
         }
 
-        public async Task Update(int courseid, UpdateCourseDTO courseDTO)
+        // Update existing course
+        public async Task<ResponseViewModel<bool>> Update(int courseid, UpdateCourseDTO courseDTO)
         {
+            // Validate instructor
+            if (!_instructorRepository.IsExists(courseDTO.InstructorId))
+                return new FailResponseViewModel<bool>("InstructorID Not Exist", ErrorCode.InvalidInstrutorId);
 
-            if (!_instructorRepository.IsExist(courseDTO.InstructorId))
-                throw new Exception("Instructor Not Found");
-            var currentCourse =await _courseRepository.GetByIDWithTracking(courseid);
+            // Get current course for fallback values
+            var currentCourse = await _courseRepository.GetByIDWithTracking(courseid);
+
+            // Replace default values with existing ones
             courseDTO = new()
             {
                 Name = courseDTO.Name == "string" ? currentCourse.Name : courseDTO.Name,
@@ -132,84 +116,90 @@ namespace ExaminationSystem.Services
                 Hours = courseDTO.Hours != 0 ? currentCourse.Hours : courseDTO.Hours,
                 InstructorId = courseDTO.InstructorId != 0 ? courseDTO.InstructorId : currentCourse.InstructorId
             };
-            /*
-            var course = new Course
-            {
-                ID = id,
-                Name = courseDTO.Name,
-                Description = courseDTO.Description,
-                Hours = courseDTO.Hours,
-                InstructorId = courseDTO.InstructorId
-            };*/
+
             var course = _mapper.Map<Course>(courseDTO);
+            await _courseRepository.UpdateAsync(course);
 
-            await _courseRepository.Update(course);
+            return new SuccessResponseViewModel<bool>(true);
         }
 
-        public async Task SoftDelete(int courseId)
+        // Soft delete course and related exams
+        public async Task<ResponseViewModel<bool>> SoftDelete(int courseId)
         {
-            if (!_courseRepository.IsExist(courseId))
-                throw new Exception("Course Not Found");
-            //Soft Delete all exams related to this course
+            // Validate course
+            if (!_courseRepository.IsExists(courseId))
+                return new FailResponseViewModel<bool>("Course Not Created", ErrorCode.CourseAreadyExists);
+
+            // Remove all exams under this course
             await SoftDeleteAllExamsFromCourse(courseId);
-            await _courseRepository.SoftDelete(courseId);
+
+            // Soft delete course
+            await _courseRepository.SoftDeleteAsync(courseId);
+
+            return new SuccessResponseViewModel<bool>(true);
         }
 
-        public async Task HardDelete(int CourseId)
-        {
-            if (!_courseRepository.IsExist(CourseId))
-                throw new Exception("Course Not Found");
-            //Hard Delete all exams related to this course
-            await _courseRepository.HardDelete(CourseId);
-        }
-
+        // Get all students enrolled in a course
         public IEnumerable<GetAllStudentsDTO> GetStudents(int courseId)
         {
             var students = _studentCourseRepository.GetStudentsByCourse(courseId);
             return _mapper.Map<List<GetAllStudentsDTO>>(students);
         }
 
-        public async Task<bool> AssignExamToCourse(int courseID, int examID)
+        // Assign exam to course
+        public async Task<ResponseViewModel<bool>> AssignExamToCourse(int courseID, int examID)
         {
-            if (!_courseRepository.IsExist(courseID))
-                throw new Exception("Course Not Found");
+            // Validate course and exam
+            if (!_courseRepository.IsExists(courseID))
+                return new FailResponseViewModel<bool>("Course Not Exist", ErrorCode.InvalidCourseId);
 
-            if (!_examRepository.IsExist(examID))
-                throw new Exception("Exam Not Found");
+            if (!_examRepository.IsExists(examID))
+                return new FailResponseViewModel<bool>("Exam Not Exist", ErrorCode.InvalidExamId);
 
-            var exam = await _examRepository.GetByID(examID);
+            var exam = await _examRepository.GetByID(examID).FirstOrDefaultAsync();
+
+            // Ensure exam exists
+            if (exam == null)
+                return new FailResponseViewModel<bool>("Exam Not Found", ErrorCode.ExamNotFound);
+
             exam.CourseId = courseID;
+            await _examRepository.UpdateAsync(exam);
 
-            await _examRepository.Update(exam);
-            return true;
+            return new SuccessResponseViewModel<bool>(true);
         }
 
-        public async Task SoftDeleteAllExamsFromCourse(int courseID)
+        // Soft delete all exams under a course
+        public async Task<ResponseViewModel<bool>> SoftDeleteAllExamsFromCourse(int courseID)
         {
-            if (!_courseRepository.IsExist(courseID))
-                throw new Exception("Course Not Found");
+            // Validate course
+            if (!_courseRepository.IsExists(courseID))
+                return new FailResponseViewModel<bool>("Course Not Exist", ErrorCode.InvalidCourseId);
 
-            var course = _courseRepository.GetCourseWithExams(courseID).Result;
+            var course = await _courseRepository.GetCourseWithExams(courseID);
 
+            // Soft delete each exam
             foreach (var exam in course.Exams)
-            {
-                await _examRepository.SoftDelete(exam.ID);
-            }
+                await _examRepository.SoftDeleteAsync(exam.ID);
+
+            return new SuccessResponseViewModel<bool>(true);
         }
 
-        public async Task HardDeleteAllExamsFromCourse(int courseID)
+        // Build dynamic filtering predicate
+        private Expression<Func<Course, bool>> CoursePredicateBuilder(int? courseID, string? courseName, int? courseHours)
         {
-            if (!_courseRepository.IsExist(courseID))
-                throw new Exception("Course Not Found");
+            var Predicate = PredicateExtensions.PredicateExtensions.Begin<Course>(true);
 
-            var course = _courseRepository.GetCourseWithExams(courseID).Result;
+            if (courseID.HasValue)
+                Predicate = Predicate.And(c => c.ID == courseID);
 
-            foreach (var exam in course.Exams)
-            {
-                await _examRepository.HardDelete(exam.ID);
-            }
+            if (courseHours.HasValue)
+                Predicate = Predicate.And(c => c.Hours >= courseHours);
+
+            if (!string.IsNullOrEmpty(courseName))
+                Predicate = Predicate.And(c => c.Name == courseName);
+
+            return Predicate;
         }
-        
 
     }
 }

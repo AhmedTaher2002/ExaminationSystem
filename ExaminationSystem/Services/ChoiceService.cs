@@ -2,7 +2,9 @@
 using AutoMapper.QueryableExtensions;
 using ExaminationSystem.DTOs.Choice;
 using ExaminationSystem.Models;
+using ExaminationSystem.Models.Enums;
 using ExaminationSystem.Repositories;
+using ExaminationSystem.ViewModels.Response;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExaminationSystem.Services
@@ -12,139 +14,126 @@ namespace ExaminationSystem.Services
         private readonly ChoiceRepository _choiceRepository;
         private readonly QuestionRepository _questionRepository;
         private readonly IMapper _mapper;
+
         public ChoiceService(IMapper mapper)
         {
             _choiceRepository = new ChoiceRepository();
             _questionRepository = new QuestionRepository();
             _mapper = mapper;
+        }
 
-        }
-        public IEnumerable<GetAllChoicesDTO> GetAll()
+        // Get all choices
+        public async Task<ResponseViewModel<IEnumerable<GetAllChoicesDTO>>> GetAll()
         {
-            /*return _choiceRepository.GetAll()
-                .Select(c => new GetAllChoicesDTO
-                {
-                    ID = c.ID,
-                    Text = c.Text,
-                    IsCorrect = c.IsCorrect,
-                    QuestionId = c.QuestionId
-                })
-                .AsNoTracking().ToList();*/
-            var choice =_choiceRepository.GetAll().ToList();
-            return _mapper.Map<List<GetAllChoicesDTO>>(choice);
+            var choice = _choiceRepository.GetAll();
+            var result = choice.ProjectTo<GetAllChoicesDTO>(_mapper.ConfigurationProvider);
+            return new SuccessResponseViewModel<IEnumerable<GetAllChoicesDTO>>(result);
         }
-        public async Task<GetChoiceByIdDTO> GetByID(int id)
+
+        // Get choice by ID
+        public async Task<ResponseViewModel<GetChoiceByIdDTO>> GetByID(int id)
         {
-            if (!_choiceRepository.IsExist(id))
-                throw new Exception("Choice Not Found");
+            if (!_choiceRepository.IsExists(id))
+                return new FailResponseViewModel<GetChoiceByIdDTO>("ChoiceId Not Exists", ErrorCode.invalidChoiceId);
+
+            var choice = _choiceRepository.GetByID(id);
+            var result = await choice.ProjectTo<GetChoiceByIdDTO>(_mapper.ConfigurationProvider).FirstOrDefaultAsync();
+
+            if (result is null)
+                return new FailResponseViewModel<GetChoiceByIdDTO>("Choice not found", ErrorCode.invalidChoiceId);
+
+            return new SuccessResponseViewModel<GetChoiceByIdDTO>(result);
+        }
+
+        // Create new choice
+        public async Task<ResponseViewModel<bool>> Create(CreateChoiceDTO dto)
+        {
+            if (!CreateDataValidate(dto))
+                return new FailResponseViewModel<bool>("Invalid Data", ErrorCode.ChoiceNotCreated);
+
+            Choice choice = _mapper.Map<Choice>(dto);
+            await _choiceRepository.AddAsync(choice);
+            return new SuccessResponseViewModel<bool>(true);
+        }
+
+        // Validate create data
+        private bool CreateDataValidate(CreateChoiceDTO createChoiceDTO)
+        {
+            if (createChoiceDTO == null)
+                return false;
+
+            if (string.IsNullOrEmpty(createChoiceDTO.Text) || createChoiceDTO.QuestionId <= 0)
+                return false;
+
+            if (!_questionRepository.IsExists(createChoiceDTO.QuestionId))
+                return false;
+
+            if (!_choiceRepository.IsExists(createChoiceDTO.Text, createChoiceDTO.QuestionId))
+                return false;
+
+            return true;
+        }
+
+        // Update existing choice
+        public async Task<ResponseViewModel<bool>> Update(int id, UpdateChoiceDTO dto)
+        {
+            if (!UpdateDataValidate(dto))
+                return new FailResponseViewModel<bool>("Invalid Data", ErrorCode.ChoiceNotUpdated);
 
             var choice = await _choiceRepository.GetByIDWithTracking(id);
-            return _mapper.Map<GetChoiceByIdDTO>(choice);
-            /*var res= new GetChoiceByIdDTO
-            {
-                ID = choice.ID,
-                Text = choice.Text,
-                IsCorrect = choice.IsCorrect,
-                QuestionId = choice.QuestionId
-            return res;
-            };*/
-        }
-        public async Task<GetAllChoicesDTO> Get(int? id,string? text) { 
-            var query = _choiceRepository.GetAll().AsQueryable();
-            if (id.HasValue)
-            {
-                query = query.Where(c => c.ID == id.Value);
-            }
-            if (!string.IsNullOrEmpty(text))
-            {
-                query = query.Where(c => c.Text.Contains(text));
-            }
-            var choice = await query.AsNoTracking().FirstOrDefaultAsync() ?? throw new Exception("StudentCourse Not Found");
-            
-            /*return new GetAllChoicesDTO
-            {
-                ID = choice.ID,
-                Text = choice.Text,
-                IsCorrect = choice.IsCorrect,
-                QuestionId = choice.QuestionId
-            };*/
-            return _mapper.Map<GetAllChoicesDTO>(choice);
-        }
-        public async Task Create(CreateChoiceDTO dto)
-        {
-            if (!_questionRepository.IsExist(dto.QuestionId))
-                throw new Exception("Question Not Found");
-            /*
-            Choice choice = new Choice
-            {
-                Text = dto.Text,
-                IsCorrect = dto.IsCorrect,
-                QuestionId = dto.QuestionId
-            };
-            */
-            Choice choice= _mapper.Map<Choice>(dto);
-            await _choiceRepository.Add(choice);
-        }
-        public async Task Update(int id, UpdateChoiceDTO dto)
-        {
-            if (!_choiceRepository.IsExist(id))
-                throw new Exception("Choice Not Found");
 
-            if (!_questionRepository.IsExist(dto.QuestionId))
-                throw new Exception("Question Not Found");
-            var choice =await GetByID(id);
-            dto = new ()
+            // Replace default values with existing ones
+            dto = new()
             {
-                Text = dto.Text == "string" ? choice.Text: dto.Text,
-                IsCorrect = dto.IsCorrect==default?choice.IsCorrect:dto.IsCorrect,
-                QuestionId=dto.QuestionId==0?choice.QuestionId:dto.QuestionId
+                Text = dto.Text == "string" ? choice.Text : dto.Text,
+                IsCorrect = dto.IsCorrect == default ? choice.IsCorrect : dto.IsCorrect,
+                QuestionId = dto.QuestionId == 0 ? choice.QuestionId : dto.QuestionId
             };
-            /*
-            Choice choice =new Choice
-            {
-                ID = id,
-                Text = dto.Text,
-                IsCorrect = dto.IsCorrect,
-                QuestionId = dto.QuestionId
-            };
-            */
+
             var choiceUpdate = _mapper.Map<Choice>(dto);
-            await _choiceRepository.Update(choiceUpdate);
-        }
-        public async Task SoftDelete(int choiceId)
-        {
-            if (!_choiceRepository.IsExist(choiceId))
-                throw new Exception("Choice Not Found");
-            
-            await _choiceRepository.SoftDelete(choiceId);
-        }
-        public async Task HardDelete(int choiceId)
-        {
-            if (!_choiceRepository.IsExist(choiceId))
-                throw new Exception("Choice Not Found");
+            await _choiceRepository.UpdateAsync(choiceUpdate);
 
-            await _choiceRepository.HardDelete(choiceId);
+            return new SuccessResponseViewModel<bool>(true);
         }
-        
-        //--------------------------------SRS CONTROLLER HELPERS
-        public List<GetAllChoicesDTO> GetChoiceForQuestionID(int questionId)
+
+        // Validate update data
+        private bool UpdateDataValidate(UpdateChoiceDTO updateChoiceDTO)
         {
-            if (!_questionRepository.IsExist(questionId))
-                throw new Exception("Question Not Found");
-            /*
-            var res = _choiceRepository.GetAll()
-                .Where(c => c.QuestionId == questionId)
-                .Select(c => new GetAllChoicesDTO
-                {
-                    ID = c.ID,
-                    Text = c.Text,
-                    IsCorrect = c.IsCorrect,
-                    QuestionId = c.QuestionId
-                })
-                .AsNoTracking().ToList();
-            */
-            var res=_mapper.Map<List<GetAllChoicesDTO>>(_choiceRepository.GetAll().Where(   c=>c.QuestionId==questionId).ToList()  );
-            return res;
+            if (updateChoiceDTO == null)
+                return false;
+
+            if (string.IsNullOrEmpty(updateChoiceDTO.Text) || updateChoiceDTO.QuestionId <= 0)
+                return false;
+
+            if (!_questionRepository.IsExists(updateChoiceDTO.QuestionId))
+                return false;
+
+            if (!_choiceRepository.IsExists(updateChoiceDTO.Text, updateChoiceDTO.QuestionId))
+                return false;
+
+            return true;
+        }
+
+        // Soft delete a choice
+        public async Task<ResponseViewModel<bool>> SoftDelete(int choiceId)
+        {
+            if (!_choiceRepository.IsExists(choiceId))
+                return new FailResponseViewModel<bool>("Choice not Exists", ErrorCode.ChoiceNotFound);
+
+            await _choiceRepository.SoftDeleteAsync(choiceId);
+            return new SuccessResponseViewModel<bool>(true);
+        }
+
+        // Get all choices for a specific question
+        public async Task<ResponseViewModel<IEnumerable<GetAllChoicesDTO>>> GetChoiceForQuestionID(int questionId)
+        {
+            if (!_questionRepository.IsExists(questionId))
+                return new FailResponseViewModel<IEnumerable<GetAllChoicesDTO>>("Choice not Exists", ErrorCode.ChoiceNotFound);
+
+            var questionChoices = _choiceRepository.GetAll().Where(c => c.QuestionId == questionId && !c.IsDeleted);
+            var result = await questionChoices.ProjectTo<GetAllChoicesDTO>(_mapper.ConfigurationProvider).ToListAsync();
+
+            return new SuccessResponseViewModel<IEnumerable<GetAllChoicesDTO>>(result);
         }
     }
 }
