@@ -38,9 +38,7 @@ This project demonstrates real-world backend development practices including rol
 
 ## 🏗 Architecture & Design
 
-- Clean Architecture
-- Onion Architecture
-- Vertical Slicing
+- N-Teir Architecture
 - Repository Pattern
 - Service Layer abstraction
 - AutoMapper for DTO ↔ ViewModel mapping
