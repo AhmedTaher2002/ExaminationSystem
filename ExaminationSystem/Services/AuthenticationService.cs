@@ -9,18 +9,25 @@ namespace ExaminationSystem.Services
 {
     public class AuthenticationService
     {
+        #region Repositories
+
         private readonly StudentRepository _studentRepository;
-        private readonly InstructorRepository instructorRepository;
+        private readonly InstructorRepository _instructorRepository;
+
         public AuthenticationService()
         {
             _studentRepository = new StudentRepository();
-            instructorRepository = new InstructorRepository();
+            _instructorRepository = new InstructorRepository();
         }
 
-        // Login (Email OR Username)
+        #endregion
+
+        #region Authentication
+
+        // Login using Email or Username
         public async Task<ResponseViewModel<string>> Login(LoginDTO dto)
         {
-            //Try to find student
+            // Try to find student
             var student = await _studentRepository
                 .Get(s => (s.Email == dto.EmailOrUsername || s.Username == dto.EmailOrUsername) && !s.IsDeleted)
                 .FirstOrDefaultAsync();
@@ -28,27 +35,35 @@ namespace ExaminationSystem.Services
             if (student != null)
             {
                 if (student.PasswordHash != dto.Password)
-                    return new FailResponseViewModel<string>("invalid username/email or password", ErrorCode.InvalidStudentEmail);
+                    return new FailResponseViewModel<string>("Invalid email/username or password for student.",ErrorCode.StudentInvalidCredentials);
 
                 var token = GenerateToken.Generate(student.ID.ToString(), student.FullName, student.Role.ToString());
                 return new SuccessResponseViewModel<string>(token);
             }
 
             // Try to find instructor
-            var instructor = await instructorRepository
+            var instructor = await _instructorRepository
                 .Get(i => (i.Email == dto.EmailOrUsername || i.Username == dto.EmailOrUsername) && !i.IsDeleted)
                 .FirstOrDefaultAsync();
 
             if (instructor != null)
             {
                 if (instructor.PasswordHash != dto.Password)
-                    return new FailResponseViewModel<string>("Invalid username/email or password", ErrorCode.InvalidPassword);
+                    return new FailResponseViewModel<string>(
+                        "Invalid email/username or password for instructor.",
+                        ErrorCode.InstructorInvalidCredentials
+                    );
 
                 var token = GenerateToken.Generate(instructor.ID.ToString(), instructor.FullName, "Instructor");
                 return new SuccessResponseViewModel<string>(token);
             }
 
-            return new FailResponseViewModel<string>("Invalid username/email or password", ErrorCode.InvalidStudentEmail);
+            return new FailResponseViewModel<string>(
+                "No user found with the provided email or username.",
+                ErrorCode.UserNotFound
+            );
         }
+
+        #endregion
     }
 }

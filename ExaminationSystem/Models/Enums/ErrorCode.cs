@@ -2,75 +2,78 @@
 {
     public enum ErrorCode
     {
-        NoError = 0,
+        #region AuthenticationService (1000-1099)
+        InvalidStudentEmail = 1000,
+        InvalidPassword = 1001,
+        UserNotFound = 1002,
+        StudentInvalidCredentials = 1003,
+        InstructorInvalidCredentials = 1004,
+        #endregion
 
-        RoleAlreadyHasFeature=1,
+        #region RoleFeatureService (1100-1199)
+        RoleDoesNotHaveFeature = 1100,
+        RoleAlreadyHasFeature = 1101,
+        RoleFeatureNotFound = 1102,
+        #endregion
 
-        // Course related
-        InvalidCourseId = 101,
-        CourseNotFound = 103,
-        CourseAreadyExists = 104,
-        CourseNotCreated = 106,
-        InvalidCourseFilter= 107,
-        CourseNotHasStudents=108,
+        #region InstructorService (1200-1299)
+        InstructorNotFound = 1200,
+        InvalidInstructorId = 1201,
+        StudentAlreadyEnrolled = 1202,
+        #endregion
 
-        // Instructor related
-        InvalidInstrutorId = 201,
-        InstrutorNotFound = 203,
-        InstrutorAreadyExists = 204,
-        InstructorNotCreated = 206,
-        InvalidInstrutorEmail = 207,
-        InstrutorEmailAlreadyExists = 208,
+        #region StudentService (1300-1399)
+        StudentNotFound = 1300,
+        InvalidStudentId = 1301,
+        StudentNotCreated = 1302,
+        StudentNotUpdated = 1303,
+        StudentAlreadyAssignedToCourse = 1304,
+        StudentNotAssignedToCourse = 1305,
+        StudentStartedExam = 1306,
+        StudentAlreadyTookFinalExam = 1307,
+       
+        #endregion
 
-        // Student related
-        InvalidStudentId = 301,
-        StudentNotFound = 303,
-        StudentAreadyExists = 304,
-        StudentNotCreated = 306,
-        InvalidStudentEmail = 307,
-        StudentEmailAlreadyExists = 308,
-        StudentNotUpdated = 309,
-        StudentNotAssignedToCourse = 708,
-        StudentStartedExam = 709,
-        StudentAreadyTakeFinalExam = 710,
+        #region CourseService (1400-1499)
+        InvalidCourseId = 1400,
+        CourseNotFound = 1401,
+        CourseAlreadyExists = 1402,
+        CourseNotCreated = 1403,
+        InvalidCourseFilter = 1404,
+        CourseHasNoStudents = 1405,
+        #endregion
 
-        // Exam related
-        InvalidExamId = 401,
-        ExamNotFound = 403,
-        ExamNotCreated = 406,
-        ExamDateInvalid = 407,
-        ExamDurationInvalid = 408,
+        #region ExamService (1500-1599)
+        InvalidExamId = 1500,
+        ExamNotFound = 1501,
+        InvalidExamData = 1502,
+        NotEnoughQuestions = 1503,
+        QuestionAlreadyAssigned = 1504,
+        StudentNotAssignedToExam = 1505,
+        StudentNotSubmittedExam = 1506,
+        InvalidTotalQuestions = 1507,
+        TotalPercentageNot100 = 1508,
+        ExamTimeExpired = 1509,
+        ExamNotStarted = 1510,
+        ExamAlreadySubmitted = 1511,
+        #endregion
 
-        // Question related
-        InvalidQuestionId = 501,
-        QuestionNotFound = 503,
-        QuestionNotCreated = 506,
-        QuestionNotUpdated = 507,
-        QuestionAreadyExists= 508,
-        InvalidQuestion = 509,
+        #region QuestionService (1600-1699)
+        InvalidQuestionId = 1600,
+        QuestionNotFound = 1601,
+        QuestionNotUpdated = 1602,
+        QuestionNotCreated = 1603,
+        QuestionNotAssignedToExam = 1604,
+        InvalidQuestion = 1605,
+        #endregion
 
-        // Choice related
-        invalidChoiceId = 601,
-        ChoiceNotFound = 603,
-        ChoiceNotCreated = 606,
-        ChoiceDoesNotBelongToQuestion = 607,
-        ChoiceNotUpdated = 608,
-
-        // Exam & student assignment related
-        StudentNotEnrolledInCourse = 701,
-        StudentNotAssignedToExam = 702,
-        StudentNotSubmittedExam = 703,
-        TotalPrcentageNot100 = 705,
-        TolalPrcentageInvalid = 706,
-        QuestionNotAssignedToExam = 707,
-        InvalidChoice = 711,
-        ExamNotStarted = 712,
-        ExamAlreadySubmitted = 713,
-        ExamTimeExpired = 714,
-        
-        
-        InvalidEmail=715,
-        InvalidPassword=716,
-
+        #region ChoiceService (1700-1799)
+        ChoiceNotFound = 1700,
+        ChoiceNotCreatedError = 1701,
+        ChoiceNotUpdated = 1702,
+        InvalidChoiceId = 1703,
+        ChoiceNotCreated = 1704,
+        InvalidChoice = 1705,
+        #endregion
     }
 }

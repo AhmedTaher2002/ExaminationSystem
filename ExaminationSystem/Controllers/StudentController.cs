@@ -67,23 +67,23 @@ namespace ExaminationSystem.Controllers
         }
 
         [HttpPost("enroll")]
-        public async Task<ResponseViewModel<bool>> EnrollInCourse([FromBody] StudentCourseDTO dto)
+        public async Task<ResponseViewModel<bool>> EnrollInCourse([FromBody] StudentCourseViewModel vm)
         {
-            var result = await _studentService.EnrollInCourse(dto);
+            var result = await _studentService.EnrollInCourse(_mapper.Map<StudentCourseDTO>(vm));
             return HandleResult<bool, bool>(result);
         }
 
         [HttpPost("exam/start")]
-        public async Task<ResponseViewModel<bool>> StartExam([FromBody] StudentExamDTO dto)
+        public async Task<ResponseViewModel<bool>> StartExam([FromBody] StudentExamViewModel vm)
         {
-            var result = await _studentService.StartExam(dto);
+            var result = await _studentService.StartExam(_mapper.Map<StudentExamDTO>(vm));
             return HandleResult<bool, bool>(result);
         }
 
         [HttpPost("exam/submit")]
-        public async Task<ResponseViewModel<bool>> SubmitAnswers([FromBody] List<StudentAnswerDTO> answers)
+        public async Task<ResponseViewModel<bool>> SubmitAnswers([FromBody] List<StudentAnswerViewModel> answers)
         {
-            var result = await _studentService.SubmitAnswers(answers);
+            var result = await _studentService.SubmitAnswers(_mapper.Map<List<StudentAnswerDTO>>(answers));
             return HandleResult<bool, bool>(result);
         }
 
@@ -95,9 +95,9 @@ namespace ExaminationSystem.Controllers
         }
 
         [HttpDelete("course/remove")]
-        public async Task<ResponseViewModel<bool>> SoftDeleteStudentFromCourse([FromBody] StudentCourseDTO dto)
+        public async Task<ResponseViewModel<bool>> SoftDeleteStudentFromCourse([FromBody] StudentCourseViewModel vm)
         {
-            var result = await _studentService.SoftDeleteStudentFromCourse(dto);
+            var result = await _studentService.SoftDeleteStudentFromCourse(_mapper.Map<StudentCourseDTO>(vm));
             return HandleResult<bool, bool>(result);
         }
 

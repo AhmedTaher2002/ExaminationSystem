@@ -16,6 +16,7 @@ namespace ExaminationSystem.Services
 {
     public class StudentService
     {
+        #region Repositories & Mapper
         private readonly StudentRepository _studentRepository;
         private readonly StudentCourseRepository _studentCourseRepository;
         private readonly StudentExamRepository _studentExamRepository;
@@ -24,6 +25,9 @@ namespace ExaminationSystem.Services
         private readonly ChoiceRepository _choiceRepository;
         private readonly CourseRepository _courseRepository;
         private readonly IMapper _mapper;
+        #endregion
+
+        #region Constructor
         public StudentService(IMapper mapper)
         {
             _studentRepository = new StudentRepository();
@@ -35,47 +39,44 @@ namespace ExaminationSystem.Services
             _courseRepository = new CourseRepository();
             _mapper = mapper;
         }
+        #endregion
 
         #region Student CRUD
 
-        // Get all students
         public async Task<ResponseViewModel<IEnumerable<GetAllStudentsDTO>>> GetAll()
         {
             var students = _studentRepository.GetAll().AsNoTracking();
             var result = await students.ProjectTo<GetAllStudentsDTO>(_mapper.ConfigurationProvider).ToListAsync();
 
-            return (result != null)
+            return (result != null && result.Any())
                 ? new SuccessResponseViewModel<IEnumerable<GetAllStudentsDTO>>(result)
-                : new FailResponseViewModel<IEnumerable<GetAllStudentsDTO>>("No Students Found", ErrorCode.StudentNotFound);
+                : new FailResponseViewModel<IEnumerable<GetAllStudentsDTO>>("No students found", ErrorCode.StudentNotFound);
         }
 
-        // Get student by ID
         public async Task<ResponseViewModel<GetStudentByIdDTO>> GetByID(int id)
         {
             if (!_studentRepository.IsExists(id))
-                return new FailResponseViewModel<GetStudentByIdDTO>("Student not Exist", ErrorCode.InvalidStudentId);
+                return new FailResponseViewModel<GetStudentByIdDTO>("Student ID does not exist", ErrorCode.InvalidStudentId);
 
             var student = _studentRepository.GetByID(id);
             var result = await student.ProjectTo<GetStudentByIdDTO>(_mapper.ConfigurationProvider).FirstOrDefaultAsync();
 
             return (result != null)
                 ? new SuccessResponseViewModel<GetStudentByIdDTO>(result)
-                : new FailResponseViewModel<GetStudentByIdDTO>("Student not Exist", ErrorCode.StudentNotFound);
+                : new FailResponseViewModel<GetStudentByIdDTO>("Student not found", ErrorCode.StudentNotFound);
         }
 
-        // Filter students dynamically
         public async Task<ResponseViewModel<IEnumerable<GetAllStudentsDTO>>> Get(int? id, string? name, string? email)
         {
             var predicate = StudentPredicateBuilder(id, name, email);
             var students = _studentRepository.Get(predicate).AsNoTracking();
             var result = await students.ProjectTo<GetAllStudentsDTO>(_mapper.ConfigurationProvider).ToListAsync();
 
-            return (result != null && result.Count > 0)
+            return (result != null && result.Any())
                 ? new SuccessResponseViewModel<IEnumerable<GetAllStudentsDTO>>(result)
-                : new FailResponseViewModel<IEnumerable<GetAllStudentsDTO>>("No Students Found", ErrorCode.StudentNotFound);
+                : new FailResponseViewModel<IEnumerable<GetAllStudentsDTO>>("No students found with the specified criteria", ErrorCode.StudentNotFound);
         }
 
-        // Create a new student
         public async Task<ResponseViewModel<bool>> Create(CreateStudentDTO dto)
         {
             if (_studentRepository.IsExists(dto.Email))
@@ -86,19 +87,17 @@ namespace ExaminationSystem.Services
 
             return (student != null)
                 ? new SuccessResponseViewModel<bool>(true)
-                : new FailResponseViewModel<bool>("Student Not Created", ErrorCode.StudentNotCreated);
+                : new FailResponseViewModel<bool>("Student could not be created", ErrorCode.StudentNotCreated);
         }
 
-        // Update student info
         public async Task<ResponseViewModel<bool>> Update(int studentID, UpdateStudentDTO dto)
         {
             if (!_studentRepository.IsExists(studentID))
-                return new FailResponseViewModel<bool>("Student Not Found", ErrorCode.InvalidStudentId);
+                return new FailResponseViewModel<bool>("Student not found", ErrorCode.InvalidStudentId);
 
             var existingStudent = await _studentRepository.GetByID(studentID).FirstOrDefaultAsync();
-
             if (existingStudent == null)
-                return new FailResponseViewModel<bool>("Student Not Found", ErrorCode.InvalidStudentId);
+                return new FailResponseViewModel<bool>("Student not found", ErrorCode.InvalidStudentId);
 
             dto = new UpdateStudentDTO
             {
@@ -112,14 +111,13 @@ namespace ExaminationSystem.Services
 
             return (student != null)
                 ? new SuccessResponseViewModel<bool>(true)
-                : new FailResponseViewModel<bool>("Student Not Updated", ErrorCode.StudentNotUpdated);
+                : new FailResponseViewModel<bool>("Student could not be updated", ErrorCode.StudentNotUpdated);
         }
 
-        // Soft delete student
         public async Task<ResponseViewModel<bool>> SoftDelete(int studentId)
         {
             if (!_studentRepository.IsExists(studentId))
-                return new FailResponseViewModel<bool>("Student Not Found", ErrorCode.InvalidStudentId);
+                return new FailResponseViewModel<bool>("Student not found", ErrorCode.InvalidStudentId);
 
             await _studentRepository.SoftDeleteAsync(studentId);
             return new SuccessResponseViewModel<bool>(true);
@@ -129,62 +127,56 @@ namespace ExaminationSystem.Services
 
         #region Course Enrollment
 
-        // Enroll student in a course
         public async Task<ResponseViewModel<bool>> EnrollInCourse(StudentCourseDTO studentCourseDTO)
         {
             if (!_studentRepository.IsExists(studentCourseDTO.StudentId))
-                return new FailResponseViewModel<bool>("Student Not Found", ErrorCode.InvalidStudentId);
+                return new FailResponseViewModel<bool>("Student not found", ErrorCode.InvalidStudentId);
             if (!_courseRepository.IsExists(studentCourseDTO.CourseId))
-                return new FailResponseViewModel<bool>("Course Not Found", ErrorCode.InvalidCourseId);
+                return new FailResponseViewModel<bool>("Course not found", ErrorCode.InvalidCourseId);
             if (_studentCourseRepository.IsAssigned(studentCourseDTO.StudentId, studentCourseDTO.CourseId))
-                return new FailResponseViewModel<bool>("Student Not Assigned to Course", ErrorCode.StudentNotAssignedToCourse);
+                return new FailResponseViewModel<bool>("Student already assigned to this course", ErrorCode.StudentAlreadyAssignedToCourse);
 
             await _studentCourseRepository.Add(_mapper.Map<StudentCourse>(studentCourseDTO));
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Remove student from course
         public async Task<ResponseViewModel<bool>> SoftDeleteStudentFromCourse(StudentCourseDTO studentCourseDTO)
         {
             if (!_studentCourseRepository.IsAssigned(studentCourseDTO.StudentId, studentCourseDTO.CourseId))
-                return new FailResponseViewModel<bool>("Student Not Assigned to Course", ErrorCode.StudentNotAssignedToCourse);
+                return new FailResponseViewModel<bool>("Student not assigned to this course", ErrorCode.StudentNotAssignedToCourse);
 
             await _studentCourseRepository.SoftDelete(_mapper.Map<StudentCourse>(studentCourseDTO));
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Get courses for a student
         public async Task<ResponseViewModel<IEnumerable<GetAllCoursesDTO>>> GetCoursesForStudent(int studentId)
         {
             if (!_studentRepository.IsExists(studentId))
-                return new FailResponseViewModel<IEnumerable<GetAllCoursesDTO>>("Student Not Found", ErrorCode.InvalidStudentId);
+                return new FailResponseViewModel<IEnumerable<GetAllCoursesDTO>>("Student not found", ErrorCode.InvalidStudentId);
 
             var courses = _studentCourseRepository.GetByStudentCourses(studentId)
                                                   .Include(sc => sc.Course)
                                                   .Select(sc => sc.Course);
-
             var result = await courses.ProjectTo<GetAllCoursesDTO>(_mapper.ConfigurationProvider).ToListAsync();
 
-            return (result != null)
+            return (result != null && result.Any())
                 ? new SuccessResponseViewModel<IEnumerable<GetAllCoursesDTO>>(result)
-                : new FailResponseViewModel<IEnumerable<GetAllCoursesDTO>>("No Courses Found with the provided filters", ErrorCode.CourseNotFound);
+                : new FailResponseViewModel<IEnumerable<GetAllCoursesDTO>>("No courses found for this student", ErrorCode.CourseNotFound);
         }
 
         #endregion
 
         #region Exam Management
 
-        // Start an exam for a student
         public async Task<ResponseViewModel<bool>> StartExam(StudentExamDTO dto)
         {
             var studentExam = await _studentExamRepository.GetWithTracking(dto.StudentId, dto.ExamId);
-
             if (studentExam == null)
-                return new FailResponseViewModel<bool>("Student Not Assigned to Course", ErrorCode.StudentNotAssignedToCourse);
+                return new FailResponseViewModel<bool>("Student not assigned to exam", ErrorCode.StudentNotAssignedToCourse);
             if (studentExam.StartedTime != default)
                 return new FailResponseViewModel<bool>("Exam already started", ErrorCode.StudentStartedExam);
             if (studentExam.Exam.Type == ExamType.Final && _studentExamRepository.HasFinalExam(dto.StudentId))
-                return new FailResponseViewModel<bool>("Student already took final exam", ErrorCode.StudentAreadyTakeFinalExam);
+                return new FailResponseViewModel<bool>("Student already took final exam", ErrorCode.StudentAlreadyTookFinalExam);
 
             studentExam.StartedTime = DateTime.UtcNow;
             studentExam.IsSubmitted = false;
@@ -193,7 +185,6 @@ namespace ExaminationSystem.Services
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Submit a batch of answers
         public async Task<ResponseViewModel<bool>> SubmitAnswers(List<StudentAnswerDTO> answers)
         {
             foreach (var answer in answers)
@@ -205,15 +196,16 @@ namespace ExaminationSystem.Services
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Get exams assigned to a student
         public async Task<ResponseViewModel<IEnumerable<GetExamsForStudentDTO>>> GetExamsForStudent(int studentId)
         {
             if (!_studentRepository.IsExists(studentId))
-                throw new Exception("Student Not Found");
+                throw new Exception("Student not found");
 
-            var exams = _studentExamRepository.Get(se => se.StudentId == studentId).Include(se => se.Exam).Where(se => !se.Exam.IsDeleted);
-            var result =await exams.ProjectTo<GetExamsForStudentDTO>(_mapper.ConfigurationProvider).ToListAsync();
-            
+            var exams = _studentExamRepository.Get(se => se.StudentId == studentId)
+                                             .Include(se => se.Exam)
+                                             .Where(se => !se.Exam.IsDeleted);
+            var result = await exams.ProjectTo<GetExamsForStudentDTO>(_mapper.ConfigurationProvider).ToListAsync();
+
             return new SuccessResponseViewModel<IEnumerable<GetExamsForStudentDTO>>(result);
         }
 
@@ -221,7 +213,6 @@ namespace ExaminationSystem.Services
 
         #region Private Helpers
 
-        // Dynamic predicate for filtering students
         private Expression<Func<Student, bool>> StudentPredicateBuilder(int? id, string? name, string? email)
         {
             var predicate = PredicateExtensions.PredicateExtensions.Begin<Student>(true);
@@ -231,11 +222,9 @@ namespace ExaminationSystem.Services
             return predicate;
         }
 
-        // Check if exam time has expired
-        private  async Task<ResponseViewModel<bool>> CheckExamTime(StudentExam studentExam)
+        private async Task<ResponseViewModel<bool>> CheckExamTime(StudentExam studentExam)
         {
             var endTime = studentExam.StartedTime.AddMinutes(studentExam.Exam.DurationMinutes);
-
             if (DateTime.UtcNow <= endTime)
                 return new SuccessResponseViewModel<bool>(true);
 
@@ -243,8 +232,7 @@ namespace ExaminationSystem.Services
             return new FailResponseViewModel<bool>("Exam time expired — exam auto submitted", ErrorCode.ExamTimeExpired);
         }
 
-        // Automatically submit exam and calculate score
-        private  async Task AutoSubmitExam(StudentExam studentExam)
+        private async Task AutoSubmitExam(StudentExam studentExam)
         {
             if (studentExam.IsSubmitted) return;
 
@@ -257,7 +245,6 @@ namespace ExaminationSystem.Services
             await _studentExamRepository.Update(studentExam);
         }
 
-        // Submit a single answer
         private async Task<ResponseViewModel<bool>> SubmitAnswer(StudentAnswerDTO dto)
         {
             var studentExam = await _studentExamRepository.GetWithTracking(dto.StudentId, dto.ExamId);
@@ -275,7 +262,7 @@ namespace ExaminationSystem.Services
             if (!_examQuestionRepository.IsAssigned(dto.ExamId, dto.QuestionId))
                 return new FailResponseViewModel<bool>("Question not part of exam", ErrorCode.InvalidQuestion);
             if (!await _choiceRepository.IsChoiceBelongsToQuestion(dto.SelectedChoiceId, dto.QuestionId))
-                return new FailResponseViewModel<bool>("Invalid choice", ErrorCode.InvalidChoice);
+                return new FailResponseViewModel<bool>("Invalid choice selected", ErrorCode.InvalidChoice);
 
             await _studentAnswerRepository.AddOrUpdate(_mapper.Map<StudentAnswer>(dto));
             return new SuccessResponseViewModel<bool>(true);

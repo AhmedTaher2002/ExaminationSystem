@@ -7,34 +7,47 @@ namespace ExaminationSystem.Services
 {
     public class RoleFeatureService
     {
+        #region Repositories & Context
+
         public RoleFeatureRepository _roleFeatureRepository;
         public Context _context;
+
         public RoleFeatureService()
         {
             _roleFeatureRepository = new RoleFeatureRepository();
             _context = new Context();
         }
-        public async Task<ResponseViewModel<bool>> AssignFeatureToRole(Role role, Feature feature)
-        {
 
-            // Check if the role-feature assignment already exists
-            if (_roleFeatureRepository.IsExists(role,feature))
-            {
-                return new FailResponseViewModel<bool>("Feature is AlreadyExist",ErrorCode.RoleAlreadyHasFeature); // Assignment already exists, no need to add
-            }
-            await _roleFeatureRepository.AddAsync(role,feature);
-            return new SuccessResponseViewModel<bool>(true);
-            
-        }
-        public async Task<ResponseViewModel<bool>> RemoveFeatureFromRole(Role role, Feature feature)
+        #endregion
+
+        #region Role-Feature Management
+
+        // Assign a feature to a role
+        public async Task<ResponseViewModel<bool>> AssignFeatureToRole(Role role, Feature feature)
         {
             if (_roleFeatureRepository.IsExists(role, feature))
             {
-                return new FailResponseViewModel<bool>("Feature is AlreadyExist", ErrorCode.RoleAlreadyHasFeature); // Assignment already exists, no need to add
-            }         
-            await _roleFeatureRepository.SoftDeleteAsync(role,feature);
+                return new FailResponseViewModel<bool>("This role already has the specified feature assigned.",ErrorCode.RoleAlreadyHasFeature
+                );
+            }
+
+            await _roleFeatureRepository.AddAsync(role, feature);
             return new SuccessResponseViewModel<bool>(true);
         }
 
+        // Remove a feature from a role
+        public async Task<ResponseViewModel<bool>> RemoveFeatureFromRole(Role role, Feature feature)
+        {
+            if (!_roleFeatureRepository.IsExists(role, feature))
+            {
+                return new FailResponseViewModel<bool>(
+                    "This role does not have the specified feature assigned.",ErrorCode.RoleDoesNotHaveFeature);
+            }
+
+            await _roleFeatureRepository.SoftDeleteAsync(role, feature);
+            return new SuccessResponseViewModel<bool>(true);
+        }
+
+        #endregion
     }
 }

@@ -4,12 +4,15 @@ using ExaminationSystem.DTOs.Choice;
 using ExaminationSystem.DTOs.Course;
 using ExaminationSystem.DTOs.Exam;
 using ExaminationSystem.DTOs.Instructor;
+using ExaminationSystem.DTOs.Other;
 using ExaminationSystem.DTOs.Question;
 using ExaminationSystem.DTOs.Student;
+using ExaminationSystem.Models;
 using ExaminationSystem.ViewModels.Choice;
 using ExaminationSystem.ViewModels.Course;
 using ExaminationSystem.ViewModels.Exam;
 using ExaminationSystem.ViewModels.Instructor;
+using ExaminationSystem.ViewModels.Other;
 using ExaminationSystem.ViewModels.Question;
 using ExaminationSystem.ViewModels.Student;
 using ExaminationSystem.ViewModels.User;
@@ -181,7 +184,8 @@ namespace ExaminationSystem.Helper
                 .ForMember(dest => dest.PasswordHash, opt => opt.MapFrom(src => src.PasswordHash));
             CreateMap<UpdateStudentViewModel, UpdateStudentDTO>()
                 .ForMember(dest => dest.PasswordHash, opt => opt.MapFrom(src => src.PasswordHash));
-
+            CreateMap<StudentCourseViewModel, StudentCourseDTO>();
+            CreateMap<StudentCourseDTO, StudentCourse>();
             #endregion
             
 

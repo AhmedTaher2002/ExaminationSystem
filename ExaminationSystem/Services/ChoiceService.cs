@@ -11,22 +11,28 @@ namespace ExaminationSystem.Services
 {
     public class ChoiceService
     {
+        #region Repositories & Mapper
         private readonly ChoiceRepository _choiceRepository;
         private readonly QuestionRepository _questionRepository;
         private readonly IMapper _mapper;
+        #endregion
 
+        #region Constructor
         public ChoiceService(IMapper mapper)
         {
             _choiceRepository = new ChoiceRepository();
             _questionRepository = new QuestionRepository();
             _mapper = mapper;
         }
+        #endregion
+
+        #region Choice CRUD
 
         // Get all choices
         public async Task<ResponseViewModel<IEnumerable<GetAllChoicesDTO>>> GetAll()
         {
-            var choice = _choiceRepository.GetAll();
-            var result = choice.ProjectTo<GetAllChoicesDTO>(_mapper.ConfigurationProvider);
+            var choices = _choiceRepository.GetAll();
+            var result = choices.ProjectTo<GetAllChoicesDTO>(_mapper.ConfigurationProvider);
             return new SuccessResponseViewModel<IEnumerable<GetAllChoicesDTO>>(result);
         }
 
@@ -34,13 +40,13 @@ namespace ExaminationSystem.Services
         public async Task<ResponseViewModel<GetChoiceByIdDTO>> GetByID(int id)
         {
             if (!_choiceRepository.IsExists(id))
-                return new FailResponseViewModel<GetChoiceByIdDTO>("ChoiceId Not Exists", ErrorCode.invalidChoiceId);
+                return new FailResponseViewModel<GetChoiceByIdDTO>("Choice ID does not exist", ErrorCode.InvalidChoiceId);
 
             var choice = _choiceRepository.GetByID(id);
             var result = await choice.ProjectTo<GetChoiceByIdDTO>(_mapper.ConfigurationProvider).FirstOrDefaultAsync();
 
             if (result is null)
-                return new FailResponseViewModel<GetChoiceByIdDTO>("Choice not found", ErrorCode.invalidChoiceId);
+                return new FailResponseViewModel<GetChoiceByIdDTO>("Choice not found", ErrorCode.ChoiceNotFound);
 
             return new SuccessResponseViewModel<GetChoiceByIdDTO>(result);
         }
@@ -49,9 +55,9 @@ namespace ExaminationSystem.Services
         public async Task<ResponseViewModel<bool>> Create(CreateChoiceDTO dto)
         {
             if (!CreateDataValidate(dto))
-                return new FailResponseViewModel<bool>("Invalid Data", ErrorCode.ChoiceNotCreated);
+                return new FailResponseViewModel<bool>("Invalid data for creating choice", ErrorCode.ChoiceNotCreated);
 
-            Choice choice = _mapper.Map<Choice>(dto);
+            var choice = _mapper.Map<Choice>(dto);
             await _choiceRepository.AddAsync(choice);
             return new SuccessResponseViewModel<bool>(true);
         }
@@ -68,7 +74,7 @@ namespace ExaminationSystem.Services
             if (!_questionRepository.IsExists(createChoiceDTO.QuestionId))
                 return false;
 
-            if (!_choiceRepository.IsExists(createChoiceDTO.Text, createChoiceDTO.QuestionId))
+            if (_choiceRepository.IsExists(createChoiceDTO.Text, createChoiceDTO.QuestionId))
                 return false;
 
             return true;
@@ -78,11 +84,10 @@ namespace ExaminationSystem.Services
         public async Task<ResponseViewModel<bool>> Update(int id, UpdateChoiceDTO dto)
         {
             if (!UpdateDataValidate(dto))
-                return new FailResponseViewModel<bool>("Invalid Data", ErrorCode.ChoiceNotUpdated);
+                return new FailResponseViewModel<bool>("Invalid data for updating choice", ErrorCode.ChoiceNotUpdated);
 
             var choice = await _choiceRepository.GetByIDWithTracking(id);
 
-            // Replace default values with existing ones
             dto = new()
             {
                 Text = dto.Text == "string" ? choice.Text : dto.Text,
@@ -108,7 +113,7 @@ namespace ExaminationSystem.Services
             if (!_questionRepository.IsExists(updateChoiceDTO.QuestionId))
                 return false;
 
-            if (!_choiceRepository.IsExists(updateChoiceDTO.Text, updateChoiceDTO.QuestionId))
+            if (_choiceRepository.IsExists(updateChoiceDTO.Text, updateChoiceDTO.QuestionId))
                 return false;
 
             return true;
@@ -118,7 +123,7 @@ namespace ExaminationSystem.Services
         public async Task<ResponseViewModel<bool>> SoftDelete(int choiceId)
         {
             if (!_choiceRepository.IsExists(choiceId))
-                return new FailResponseViewModel<bool>("Choice not Exists", ErrorCode.ChoiceNotFound);
+                return new FailResponseViewModel<bool>("Choice does not exist", ErrorCode.ChoiceNotFound);
 
             await _choiceRepository.SoftDeleteAsync(choiceId);
             return new SuccessResponseViewModel<bool>(true);
@@ -128,12 +133,14 @@ namespace ExaminationSystem.Services
         public async Task<ResponseViewModel<IEnumerable<GetAllChoicesDTO>>> GetChoiceForQuestionID(int questionId)
         {
             if (!_questionRepository.IsExists(questionId))
-                return new FailResponseViewModel<IEnumerable<GetAllChoicesDTO>>("Choice not Exists", ErrorCode.ChoiceNotFound);
+                return new FailResponseViewModel<IEnumerable<GetAllChoicesDTO>>("Question does not exist", ErrorCode.InvalidQuestionId);
 
             var questionChoices = _choiceRepository.GetAll().Where(c => c.QuestionId == questionId && !c.IsDeleted);
             var result = await questionChoices.ProjectTo<GetAllChoicesDTO>(_mapper.ConfigurationProvider).ToListAsync();
 
             return new SuccessResponseViewModel<IEnumerable<GetAllChoicesDTO>>(result);
         }
+
+        #endregion
     }
 }

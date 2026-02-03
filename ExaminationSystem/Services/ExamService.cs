@@ -15,6 +15,7 @@ namespace ExaminationSystem.Services
 {
     public class ExamService
     {
+        #region Repositories & Mapper
         private readonly ExamRepository _examRepository;
         private readonly CourseRepository _courseRepository;
         private readonly StudentRepository _studentRepository;
@@ -23,8 +24,9 @@ namespace ExaminationSystem.Services
         private readonly StudentExamRepository _studentExamRepository;
         private readonly StudentAnswerRepository _studentAnswerRepository;
         private readonly IMapper _mapper;
+        #endregion
 
-        // Constructor – initialize repositories and mapper
+        #region Constructor
         public ExamService(IMapper mapper)
         {
             _examRepository = new ExamRepository();
@@ -36,48 +38,55 @@ namespace ExaminationSystem.Services
             _questionRepository = new QuestionRepository();
             _mapper = mapper;
         }
+        #endregion
 
-        // Get all exams
+        #region Exam Retrieval
+
         public async Task<ResponseViewModel<IEnumerable<GetAllExamsDTO>>> GetAll()
         {
             var exams = _examRepository.GetAll();
             var result = await exams.ProjectTo<GetAllExamsDTO>(_mapper.ConfigurationProvider).ToListAsync();
-            return (result != null) ? new SuccessResponseViewModel<IEnumerable<GetAllExamsDTO>>(result) :
-                new FailResponseViewModel<IEnumerable<GetAllExamsDTO>>("No Exam Exist", ErrorCode.ExamNotFound);
+            return (result != null && result.Any())
+                ? new SuccessResponseViewModel<IEnumerable<GetAllExamsDTO>>(result)
+                : new FailResponseViewModel<IEnumerable<GetAllExamsDTO>>("No exams found", ErrorCode.ExamNotFound);
         }
 
-        // Get exam by ID
         public async Task<ResponseViewModel<GetExamByIdDTO>> GetByID(int id)
         {
             if (!_examRepository.IsExists(id))
-                new FailResponseViewModel<IEnumerable<GetAllExamsDTO>>("ExamId Not Exists", ErrorCode.InvalidExamId);
+                return new FailResponseViewModel<GetExamByIdDTO>("Exam ID does not exist", ErrorCode.InvalidExamId);
 
             var exam = _examRepository.GetByID(id);
             var result = await exam.ProjectTo<GetExamByIdDTO>(_mapper.ConfigurationProvider).FirstOrDefaultAsync();
 
-            return (result != null) ? new SuccessResponseViewModel<GetExamByIdDTO>(result) :
-                new FailResponseViewModel<GetExamByIdDTO>("No Exam Exist", ErrorCode.ExamNotFound);
+            return (result != null)
+                ? new SuccessResponseViewModel<GetExamByIdDTO>(result)
+                : new FailResponseViewModel<GetExamByIdDTO>("Exam not found", ErrorCode.ExamNotFound);
         }
 
-        // Filter exams by ID, title, or type
         public async Task<ResponseViewModel<IEnumerable<GetAllExamsDTO>>> Get(int? id, string? title, ExamType? type)
         {
             var predicate = ExamPredicateBuilder(id, title, type);
             var exams = _examRepository.Get(predicate);
             var result = await exams.ProjectTo<GetAllExamsDTO>(_mapper.ConfigurationProvider).ToListAsync();
-            return (result != null) ? new SuccessResponseViewModel<IEnumerable<GetAllExamsDTO>>(result) :
-                new FailResponseViewModel<IEnumerable<GetAllExamsDTO>>("No Exam Exist", ErrorCode.ExamNotFound);
+
+            return (result != null && result.Any())
+                ? new SuccessResponseViewModel<IEnumerable<GetAllExamsDTO>>(result)
+                : new FailResponseViewModel<IEnumerable<GetAllExamsDTO>>("No exams matched the filter", ErrorCode.ExamNotFound);
         }
 
-        // Create new exam (with optional auto-generated questions)
+        #endregion
+
+        #region Exam Management
+
         public async Task<ResponseViewModel<bool>> Create(CreateExamDTO dto)
         {
             if (!_courseRepository.IsExists(dto.CourseId))
-                return new FailResponseViewModel<bool>("ExamId Not Exist", ErrorCode.InvalidExamId);
+                return new FailResponseViewModel<bool>("Course ID does not exist", ErrorCode.InvalidCourseId);
 
             var exam = _mapper.Map<Exam>(dto);
             if (exam == null)
-                return new FailResponseViewModel<bool>("Invalid Data", ErrorCode.ExamDateInvalid);
+                return new FailResponseViewModel<bool>("Invalid exam data", ErrorCode.InvalidExamData);
 
             await _examRepository.AddAsync(exam);
 
@@ -90,15 +99,13 @@ namespace ExaminationSystem.Services
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Update existing exam
         public async Task<ResponseViewModel<bool>> Update(int id, UpdateExamDTO dto)
         {
             if (!_examRepository.IsExists(id))
-                return new FailResponseViewModel<bool>("ExamId Not Exist", ErrorCode.InvalidExamId);
+                return new FailResponseViewModel<bool>("Exam ID does not exist", ErrorCode.InvalidExamId);
 
             var existingExam = await _examRepository.GetByIDWithTracking(id);
 
-            // Keep existing values if defaults are passed
             dto = new UpdateExamDTO
             {
                 Title = dto.Title == "string" ? existingExam.Title : dto.Title,
@@ -113,21 +120,23 @@ namespace ExaminationSystem.Services
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Soft delete exam
         public async Task<ResponseViewModel<bool>> SoftDelete(int examId)
         {
             if (!_examRepository.IsExists(examId))
-                return new FailResponseViewModel<bool>("ExamId Not Exist", ErrorCode.InvalidExamId);
+                return new FailResponseViewModel<bool>("Exam ID does not exist", ErrorCode.InvalidExamId);
 
             await _examRepository.SoftDeleteAsync(examId);
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Get all questions for an exam
+        #endregion
+
+        #region Exam Questions
+
         public ResponseViewModel<IEnumerable<GetAllQuestionsDTO>> GetExamQuestions(int examId)
         {
             if (!_examRepository.IsExists(examId))
-                return new FailResponseViewModel<IEnumerable<GetAllQuestionsDTO>>("ExamId Not Exist", ErrorCode.InvalidExamId);
+                return new FailResponseViewModel<IEnumerable<GetAllQuestionsDTO>>("Exam ID does not exist", ErrorCode.InvalidExamId);
 
             var questions = _examQuestionRepository.GetQuestionsByExam(examId);
             var result = _mapper.Map<List<GetAllQuestionsDTO>>(questions);
@@ -135,34 +144,35 @@ namespace ExaminationSystem.Services
             return new SuccessResponseViewModel<IEnumerable<GetAllQuestionsDTO>>(result);
         }
 
-        // Assign a question to an exam
         public async Task<ResponseViewModel<bool>> AssignQuestion(ExamQuestionDTO examQuestionDTO)
         {
             if (!_examRepository.IsExists(examQuestionDTO.ExamId))
-                return new FailResponseViewModel<bool>("ExamId Not Exist", ErrorCode.InvalidExamId);
+                return new FailResponseViewModel<bool>("Exam ID does not exist", ErrorCode.InvalidExamId);
 
-            if (!_examRepository.IsExists(examQuestionDTO.QuestionId))
-                return new FailResponseViewModel<bool>("QuestionId Not Exist", ErrorCode.InvalidQuestionId);
+            if (!_questionRepository.IsExists(examQuestionDTO.QuestionId))
+                return new FailResponseViewModel<bool>("Question ID does not exist", ErrorCode.InvalidQuestionId);
 
-            if (!_examQuestionRepository.IsAssigned(examQuestionDTO.ExamId, examQuestionDTO.QuestionId))
-                return new FailResponseViewModel<bool>("Question aready Assigned to Eaxm ", ErrorCode.QuestionAreadyExists);
+            if (_examQuestionRepository.IsAssigned(examQuestionDTO.ExamId, examQuestionDTO.QuestionId))
+                return new FailResponseViewModel<bool>("Question already assigned to this exam", ErrorCode.QuestionAlreadyAssigned);
 
             await _examQuestionRepository.Add(_mapper.Map<ExamQuestion>(examQuestionDTO));
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Evaluate all students for an exam
+        #endregion
+
+        #region Exam Evaluation
+
         public async Task<ResponseViewModel<bool>> EvaluateAllExams(int examId)
         {
             if (!_examRepository.IsExists(examId))
-                return new FailResponseViewModel<bool>("ExamId Not Exist", ErrorCode.InvalidExamId);
+                return new FailResponseViewModel<bool>("Exam ID does not exist", ErrorCode.InvalidExamId);
 
             var studentExams = _studentExamRepository.Get(se => se.ExamId == examId).AsTracking().ToList();
 
-            if (studentExams == null)
-                return new FailResponseViewModel<bool>("No Students Assigned to this Exam", ErrorCode.StudentNotAssignedToExam);
+            if (!studentExams.Any())
+                return new FailResponseViewModel<bool>("No students assigned to this exam", ErrorCode.StudentNotAssignedToExam);
 
-            // Evaluate each student
             foreach (var st in studentExams)
             {
                 await EvaluateExamforStudent(examId, st.StudentId);
@@ -171,21 +181,47 @@ namespace ExaminationSystem.Services
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Auto-generate questions for an exam based on distribution
+        private async Task<ResponseViewModel<bool>> EvaluateExamforStudent(int studentId, int examId)
+        {
+            if (!_examRepository.IsExists(examId))
+                return new FailResponseViewModel<bool>("Exam ID does not exist", ErrorCode.InvalidExamId);
+
+            if (!_studentRepository.IsExists(studentId))
+                return new FailResponseViewModel<bool>("Student ID does not exist", ErrorCode.InvalidStudentId);
+
+            if (!_studentExamRepository.IsAssigned(studentId, examId))
+                return new FailResponseViewModel<bool>("Student not assigned to this exam", ErrorCode.StudentNotAssignedToExam);
+
+            if (!_studentExamRepository.IsSubmitted(studentId, examId))
+                return new FailResponseViewModel<bool>("Exam not submitted yet", ErrorCode.StudentNotSubmittedExam);
+
+            int correct = _studentAnswerRepository.CountCorrectAnswers(studentId, examId);
+            int total = _studentAnswerRepository.GetAnswersByStudentExam(studentId, examId).Count();
+
+            var studentExam = await _studentExamRepository.GetWithTracking(studentId, examId);
+            studentExam.Score = (decimal)correct / total * 100;
+            await _studentExamRepository.Update(studentExam);
+
+            return new SuccessResponseViewModel<bool>(true);
+        }
+
+        #endregion
+
+        #region Auto Generation of Questions
+
         private async Task<ResponseViewModel<bool>> AutoGenerateQuestions(ExamQuestionDistributionDTO dto)
         {
             if (!_examRepository.IsExists(dto.ExamId))
                 return new FailResponseViewModel<bool>("Exam not found", ErrorCode.ExamNotFound);
 
             if (dto.TotalQuestions <= 0)
-                return new FailResponseViewModel<bool>("Invalid total questions", ErrorCode.TolalPrcentageInvalid);
+                return new FailResponseViewModel<bool>("Invalid total questions", ErrorCode.InvalidTotalQuestions);
 
             if (dto.SimplePercentage + dto.MediumPercentage + dto.HardPercentage != 100)
-                return new FailResponseViewModel<bool>("Percentages must equal 100", ErrorCode.TotalPrcentageNot100);
+                return new FailResponseViewModel<bool>("Percentages must sum to 100", ErrorCode.TotalPercentageNot100);
 
             await _examQuestionRepository.RemoveAllQuestionsFromExam(dto.ExamId);
 
-            // Calculate number of questions per level
             int simpleCount = dto.TotalQuestions * dto.SimplePercentage / 100;
             int mediumCount = dto.TotalQuestions * dto.MediumPercentage / 100;
             int hardCount = dto.TotalQuestions - (simpleCount + mediumCount);
@@ -195,7 +231,7 @@ namespace ExaminationSystem.Services
             var hard = await GetRandomQuestions(QuestionLevel.Hard, hardCount);
 
             if (simple.Count < simpleCount || medium.Count < mediumCount || hard.Count < hardCount)
-                return new FailResponseViewModel<bool>("Not enough questions to generate exam", ErrorCode.TotalPrcentageNot100);
+                return new FailResponseViewModel<bool>("Not enough questions to generate exam", ErrorCode.NotEnoughQuestions);
 
             foreach (var question in simple.Concat(medium).Concat(hard))
             {
@@ -209,7 +245,6 @@ namespace ExaminationSystem.Services
             return new SuccessResponseViewModel<bool>(true);
         }
 
-        // Fetch random questions of a given level
         private async Task<List<Question>> GetRandomQuestions(QuestionLevel level, int count)
         {
             if (count == 0)
@@ -222,50 +257,26 @@ namespace ExaminationSystem.Services
                 .ToListAsync();
         }
 
-        // Evaluate a single student's exam
-        private async Task<ResponseViewModel<bool>> EvaluateExamforStudent(int studentId, int examId)
-        {
-            if (!_examRepository.IsExists(examId))
-                return new FailResponseViewModel<bool>("ExamId Not Exist", ErrorCode.InvalidExamId);
-            if (!_studentRepository.IsExists(studentId))
-                return new FailResponseViewModel<bool>("StudentId Not Exist", ErrorCode.InvalidStudentId);
-            if (!_studentExamRepository.IsAssigned(studentId, examId))
-                return new FailResponseViewModel<bool>("Student Not Assigned to this Exam", ErrorCode.StudentNotAssignedToExam);
-            if (!_studentExamRepository.IsSubmitted(studentId, examId))
-                return new FailResponseViewModel<bool>("Exam Not Submitted Yet", ErrorCode.StudentNotSubmittedExam);
+        #endregion
 
-            int correct = _studentAnswerRepository.CountCorrectAnswers(studentId, examId);
-            int total = _studentAnswerRepository.GetAnswersByStudentExam(studentId, examId).Count();
+        #region Predicate Builder
 
-            var studentExam = await _studentExamRepository.GetWithTracking(studentId, examId);
-            studentExam.Score = (decimal)correct / total * 100;
-            await _studentExamRepository.Update(studentExam);
-
-            return new SuccessResponseViewModel<bool>(true);
-        }
-
-        // Build dynamic predicate for filtering exams
         private Expression<Func<Exam, bool>> ExamPredicateBuilder(int? id, string? title, ExamType? type)
         {
             var predicate = PredicateExtensions.PredicateExtensions.Begin<Exam>(true);
 
             if (id.HasValue)
-            {
-                if (_examRepository.IsExists(id.Value) == false)
-                    predicate = predicate.And(e => e.ID == id.Value);
-            }
+                predicate = predicate.And(e => e.ID == id.Value);
 
             if (!string.IsNullOrEmpty(title))
-            {
                 predicate = predicate.And(e => e.Title.Contains(title));
-            }
 
             if (type.HasValue)
-            {
                 predicate = predicate.And(e => e.Type == type.Value);
-            }
 
             return predicate;
         }
+
+        #endregion
     }
 }
