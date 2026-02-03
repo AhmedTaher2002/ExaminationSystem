@@ -13,18 +13,18 @@ namespace ExaminationSystem.Controllers
             _mapper = mapper;
         }
 
-        protected ResponseViewModel<TViewModel> HandleResult<TEntity, TViewModel>(ResponseViewModel<TEntity> result)
+        protected ResponseViewModel<TDistination> HandleResult<TSourse, TDistination>(ResponseViewModel<TSourse> result)
         {
             if (!result.IsSuccess)
             {
-                return new FailResponseViewModel<TViewModel>(
+                return new FailResponseViewModel<TDistination>(
                     result.Massage,
                     result.IsError
                 );
             }
 
-            var data = _mapper.Map<TViewModel>(result.Data);
-            return new SuccessResponseViewModel<TViewModel>(data);
+            var data = _mapper.Map<TDistination>(result.Data);
+            return new SuccessResponseViewModel<TDistination>(data);
         }
     }
 }

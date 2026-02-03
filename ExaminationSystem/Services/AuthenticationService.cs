@@ -20,19 +20,19 @@ namespace ExaminationSystem.Services
         // Login (Email OR Username)
         public async Task<ResponseViewModel<string>> Login(LoginDTO dto)
         {
-            // Try to find student
-            //var student = await _studentrepository
-            //    .get(s => (s.email == dto.emailorusername || s.username == dto.emailorusername) && !s.isdeleted)
-            //    .firstordefaultasync();
+            //Try to find student
+            var student = await _studentRepository
+                .Get(s => (s.Email == dto.EmailOrUsername || s.Username == dto.EmailOrUsername) && !s.IsDeleted)
+                .FirstOrDefaultAsync();
 
-            //if (student != null)
-            //{
-            //    if (student.passwordhash != dto.password)
-            //        return new failresponseviewmodel<string>("invalid username/email or password", errorcode.invalidstudentemail);
+            if (student != null)
+            {
+                if (student.PasswordHash != dto.Password)
+                    return new FailResponseViewModel<string>("invalid username/email or password", ErrorCode.InvalidStudentEmail);
 
-            //    var token = generatetoken.generate(student.id.tostring(), student.fullname, student.role.tostring());
-            //    return new successresponseviewmodel<string>(token);
-            //}
+                var token = GenerateToken.Generate(student.ID.ToString(), student.FullName, student.Role.ToString());
+                return new SuccessResponseViewModel<string>(token);
+            }
 
             // Try to find instructor
             var instructor = await instructorRepository

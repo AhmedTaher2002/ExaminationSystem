@@ -206,15 +206,15 @@ namespace ExaminationSystem.Services
         }
 
         // Get exams assigned to a student
-        public IEnumerable<GetExamsForStudentDTO> GetExamsForStudent(int studentId)
+        public async Task<ResponseViewModel<IEnumerable<GetExamsForStudentDTO>>> GetExamsForStudent(int studentId)
         {
             if (!_studentRepository.IsExists(studentId))
                 throw new Exception("Student Not Found");
 
-            var exams = _studentExamRepository.Get(se => se.StudentId == studentId).Include(se => se.Exam).Where(se => !se.Exam.IsDeleted)
-                                             .AsNoTracking().ToList();
-
-            return _mapper.Map<IEnumerable<GetExamsForStudentDTO>>(exams);
+            var exams = _studentExamRepository.Get(se => se.StudentId == studentId).Include(se => se.Exam).Where(se => !se.Exam.IsDeleted);
+            var result =await exams.ProjectTo<GetExamsForStudentDTO>(_mapper.ConfigurationProvider).ToListAsync();
+            
+            return new SuccessResponseViewModel<IEnumerable<GetExamsForStudentDTO>>(result);
         }
 
         #endregion
